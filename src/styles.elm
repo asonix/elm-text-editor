@@ -241,6 +241,290 @@ setLinkHref href content =
 {- The functions below this line need to be reworked and/or removed
 -}
 
+{- Form a hierarchy of styles. Order:
+
+Link (Heading (Bold (Italic (Underline (Strike (Text str))))))
+
+Link (Image str)
+Link (Code str)
+-}
+
+
+{-| Links can be applied to any type of content.
+
+They are also applied in front of any other styles
+-}
+toggleLink : String -> Content -> Content
+toggleLink href current_content =
+  case current_content of
+    Text str ->
+      Link href (Text str)
+
+    Image str ->
+      Link href (Image str) -- Images can be links
+
+    Code str ->
+      Link href (Code str) -- Code can be a link
+
+    Link _ content ->
+      content -- remove link if present
+
+    Heading content ->
+      Link href Heading content -- don't style headings
+
+    Bold content ->
+      Link href (Bold content)
+
+    Italic content ->
+      Link href (Italic content)
+
+    Underline content ->
+      Link href (Underline content)
+
+    Strike content ->
+      Link href (Strike content)
+
+
+{-| Headings cannot be applied to Code or Image.
+
+They are also applied in front of all styles except link
+-}
+toggleHeading : Content -> Content
+toggleHeading current_content =
+  case current_content of
+    Text str ->
+      Heading (Text str)
+
+    Image str ->
+      Image str -- don't style images
+
+    Code str ->
+      Code str -- don't style code
+
+    Link href content ->
+      Link href (toggleHeading content)
+
+    Heading content ->
+      content -- remove heading if applied
+
+    Bold content ->
+      Heading (Bold content)
+
+    Italic content ->
+      Heading (Italic content)
+
+    Underline content ->
+      Heading (Underline content)
+
+    Strike content ->
+      Heading (Strike content)
+
+
+{-| Bold cannot be applied to Code or Image.
+
+Bold is preceded by Link and Heading
+-}
+toggleBold : Content -> Content
+toggleBold current_content =
+  case current_content of
+    Text str ->
+      Bold (Text str)
+
+    Image str ->
+      Image str -- don't style images
+
+    Code str ->
+      Code str -- don't style code
+
+    Link href content ->
+      Link href (toggleBold content)
+
+    Heading content ->
+      Heading (toggleBold content)
+
+    Bold content ->
+      content -- remove style if applied
+
+    Italic content ->
+      Bold (Italic content)
+
+    Underline content ->
+      Bold (Underline content)
+
+    Strike content ->
+      Bold (Strike content)
+
+
+{-| Italic cannot be applied to Code or Image.
+
+Italic is preceded by Link, Heading, and Bold
+-}
+toggleItalic : Content -> Content
+toggleItalic current_content =
+  case current_content of
+    Text str ->
+      Italic (Text str)
+
+    Image str ->
+      Image str -- don't style images
+
+    Code str ->
+      Code str -- don't style code
+
+    Link href content ->
+      Link href (toggleItalic content)
+
+    Heading content ->
+      Heading (toggleItalic content)
+
+    Bold content ->
+      Bold (toggleItalic content)
+
+    Italic content ->
+      content -- remove style if applied
+
+    Underline content ->
+      Italic (Underline content)
+
+    Strike content ->
+      Italic (Strike content)
+
+
+{-| Underline cannot be applied to Code or Image.
+
+Underline is preceded by Link, Heading, Bold, and Italic
+-}
+toggleUnderline : Content -> Content
+toggleUnderline current_content =
+  case current_content of
+    Text str ->
+      Underline (Text str)
+
+    Image str ->
+      Image str -- don't style images
+
+    Code str ->
+      Code str -- don't style code
+
+    Link href content ->
+      Link href (toggleUnderline content)
+
+    Heading content ->
+      Heading (toggleUnderline content)
+
+    Bold content ->
+      Bold (toggleUnderline content)
+
+    Italic content ->
+      Italic (toggleUnderline content)
+
+    Underline content ->
+      content -- remove style if applied
+
+    Strike content ->
+      Underline (Strike content)
+
+
+{-| Strike cannot be applied to Code or Image.
+
+Strike is preceded by Link, Heading, Bold, Italic, and Underline
+-}
+toggleStrike : Content -> Content
+toggleStrike current_content =
+  case current_content of
+    Text str ->
+      Strike (Text str)
+
+    Image str ->
+      Image str -- don't style images
+
+    Code str ->
+      Code str -- don't style code
+
+    Link href content ->
+      Link href (toggleStrike content)
+
+    Heading content ->
+      Heading (toggleStrike content)
+
+    Bold content ->
+      Bold (toggleStrike content)
+
+    Italic content ->
+      Italic (toggleStrike content)
+
+    Underline content ->
+      Underline (toggleStrike content)
+
+    Strike content ->
+      content -- remove style if applied
+
+
+{-| toggleImage removes styling (except link) and converts the remaining Text to an Image
+-}
+toggleImage : Content -> Content
+toggleImage current_content =
+  case current_content of
+    Text str ->
+      Image str
+
+    Image str ->
+      Text str
+
+    Code str ->
+      Code str -- don't style code
+
+    Link href content ->
+      Link href (toggleImage content)
+
+    Heading content ->
+      toggleImage content
+
+    Bold content ->
+      toggleImage content
+
+    Italic content ->
+      toggleImage content
+
+    Underline content ->
+      toggleImage content
+
+    Strike content ->
+      toggleImage content
+
+
+{-| toggleCode removes styling (except link) and converts the remaining Text to Code
+-}
+toggleCode : Content -> Content
+toggleCode current_content =
+  case current_content of
+    Text str ->
+      Code str
+
+    Image str ->
+      Image str -- don't style images
+
+    Code str ->
+      Text str
+
+    Link href content ->
+      Link href (toggleCode content)
+
+    Heading content ->
+      toggleCode content
+
+    Bold content ->
+      toggleCode content
+
+    Italic content ->
+      toggleCode content
+
+    Underline content ->
+      toggleCode content
+
+    Strike content ->
+      toggleCode content
+
 
 {-| Add or remove styles in a list
 
