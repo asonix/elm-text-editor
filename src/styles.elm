@@ -70,7 +70,7 @@ stringsToStyle list string =
       case style1 of
         "link" ->
           Link style2 (stringsToStyle styles string)
-    
+
         _ ->
           stringToRecursiveStyle style1 (stringsToStyle (style2::styles) string)
 
@@ -238,9 +238,6 @@ setLinkHref href content =
     Strike content ->
       Strike (setLinkHref href content)
 
-{- The functions below this line need to be reworked and/or removed
--}
-
 {- Form a hierarchy of styles. Order:
 
 Link (Heading (Bold (Italic (Underline (Strike (Text str))))))
@@ -253,6 +250,15 @@ Link (Code str)
 {-| Links can be applied to any type of content.
 
 They are also applied in front of any other styles
+
+examples:
+
+  > toggleLink "https://google.com" (Heading (Text "hello world"))
+  Link "https://google.com" (Heading (Text "hello world"))
+
+  > toggleLink "" (Link "https://google.com" (Text "hello world"))
+  Text "hello world"
+
 -}
 toggleLink : String -> Content -> Content
 toggleLink href current_content =
@@ -288,6 +294,18 @@ toggleLink href current_content =
 {-| Headings cannot be applied to Code or Image.
 
 They are also applied in front of all styles except link
+
+examples:
+
+  > toggleHeading (Bold (Text "hello world"))
+  Heading (Bold (Text "hello world"))
+
+  > toggleHeading (Heading (Text "hello world"))
+  Text "hello world"
+
+  > toggleHeading (Link "https://google.com (Heading (Text "hello world")))
+  Link "https://google.com" (Text "hello world")
+
 -}
 toggleHeading : Content -> Content
 toggleHeading current_content =
@@ -323,6 +341,18 @@ toggleHeading current_content =
 {-| Bold cannot be applied to Code or Image.
 
 Bold is preceded by Link and Heading
+
+examples:
+
+  > toggleBold (Italic (Text "hello world"))
+  Bold (Italic (Text "hello world"))
+
+  > toggleBold (Bold (Italic (Text "hello world")))
+  Italic (Text "hello world")
+
+  > toggleBold (Link "https://google.com" (Italic (Text "hello world")))
+  Link "https://google.com" (Bold (Italic (Text "hello world")))
+
 -}
 toggleBold : Content -> Content
 toggleBold current_content =
@@ -358,6 +388,15 @@ toggleBold current_content =
 {-| Italic cannot be applied to Code or Image.
 
 Italic is preceded by Link, Heading, and Bold
+
+examples:
+
+  > toggleItalic (Bold (Text "hello world"))
+  Bold (Italic (Text "hello world"))
+
+  > toggleItalic (Bold (Italic (Text "hello world")))
+  Bold (Text "hello world")
+
 -}
 toggleItalic : Content -> Content
 toggleItalic current_content =
@@ -393,6 +432,15 @@ toggleItalic current_content =
 {-| Underline cannot be applied to Code or Image.
 
 Underline is preceded by Link, Heading, Bold, and Italic
+
+examples:
+
+  > toggleUnderline (Bold (Text "hello world"))
+  Bold (Underline (Text "hello world"))
+
+  > toggleUnderline (Bold (Underline (Text "hello world")))
+  Bold (Text "hello world")
+
 -}
 toggleUnderline : Content -> Content
 toggleUnderline current_content =
@@ -428,6 +476,18 @@ toggleUnderline current_content =
 {-| Strike cannot be applied to Code or Image.
 
 Strike is preceded by Link, Heading, Bold, Italic, and Underline
+
+examples:
+
+  > toggleStrike (Bold (Text "hello world"))
+  Bold (Strike (Text "hello world"))
+
+  > toggleStrike (Bold (Strike (Text "hello world")))
+  Bold (Text "hello world")
+
+  > toggleStrike (Link "https://google.com" (Bold (Text "hello world")))
+  Link "https://google.com" (Bold (Strike (Text "hello world")))
+
 -}
 toggleStrike : Content -> Content
 toggleStrike current_content =
@@ -461,6 +521,18 @@ toggleStrike current_content =
 
 
 {-| toggleImage removes styling (except link) and converts the remaining Text to an Image
+
+examples:
+
+  > toggleImage (Bold (Text "https://google.com/google.png"))
+  Image "hello world"
+
+  > toggleImage (Image "https://google.com/google.png")
+  Text "https://google.com/google.png"
+
+  > toggleImage (Link "https://google.com" (Text "https://google.com/google.png"))
+  Link "https://google.com" (Image "https://google.com/google.png"
+
 -}
 toggleImage : Content -> Content
 toggleImage current_content =
@@ -494,6 +566,18 @@ toggleImage current_content =
 
 
 {-| toggleCode removes styling (except link) and converts the remaining Text to Code
+
+examples:
+
+  > toggleCode (Bold (Text "hello world"))
+  Code "hello world"
+
+  > toggleCode (Code "hello world")
+  Text "hello world"
+
+  > toggleCode (Link "https://google.com (Text "hello world"))
+  Link "https://google.com" (Code "hello world")
+
 -}
 toggleCode : Content -> Content
 toggleCode current_content =
@@ -524,63 +608,3 @@ toggleCode current_content =
 
     Strike content ->
       toggleCode content
-
-
-{-| Add or remove styles in a list
-
-examples:
-
-  > toggleStyle "bold" []
-  ["bold"]
-
-  > toggleStyle "link" []
-  ["link" ""]
-
-  > toggleStyle "link" ["bold"]
-  ["link" "" "bold"]
-
-  > toggleStyle "link" ["link" "" "bold"]
-  ["bold"]
-
-  > toggleStyle "bold" ["bold"]
-  []
-
--}
-toggleStyle : String -> List String -> List String
-toggleStyle style list =
-  if List.member style list then
-    case style of
-      "link" ->
-        removeTwo "link" list
-
-      _ ->
-        List.filter (\x -> x /= style) list
-
-  else
-    case style of
-      "link" ->
-        (style::""::list)
-
-      _ ->
-        (style::list)
-
-
-removeTwo : String -> List String -> List String
-removeTwo string list =
-  case list of
-    [] ->
-      []
-
-    [one] ->
-      if one == string then
-        []
-
-      else
-        [one]
-
-    (one::two::list) ->
-      if one == string then
-        list
-
-      else
-        removeTwo string (two::list)
