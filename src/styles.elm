@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 module Styles exposing
     (Content, setLinkHref, updateText, appendText, toggleCode, toggleImage,
     toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
-    toggleLink)
+    toggleLink, serializeToString)
 
 
 {-|
@@ -536,3 +536,38 @@ toggleCode current_content =
 
     Strike content ->
       toggleCode content
+
+
+{-| Provide a string representation of styling
+
+This is for debugging use only
+-}
+serializeToString : Content -> String
+serializeToString content =
+  case content of
+    Text str ->
+      "(Text \"" + str + "\")"
+
+    Image str ->
+      "(Image \"" + str + "\")"
+
+    Code str ->
+      "(Code \"" + str + "\")"
+
+    Link href content ->
+      "(Link \"" + href + \" " + (serializeToString content) + ")"
+
+    Heading content ->
+      "(Heading " + (serializeToString content) + ")"
+
+    Bold content ->
+      "(Bold " + (serializeToString content) + ")"
+
+    Italic content ->
+      "(Italic " + (serializeToString content) + ")"
+
+    Underline content ->
+      "(Underline " + (serializeToString content) + ")"
+
+    Strike content ->
+      "(Strike " + (serializeToString content) + ")"
