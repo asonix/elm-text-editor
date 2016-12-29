@@ -15,7 +15,9 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Styles exposing
-    (Content, stringsToStyle, toggleStyle, setLinkHref, updateText, appendText)
+    (Content, setLinkHref, updateText, appendText, toggleCode, toggleImage,
+    toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
+    toggleLink)
 
 
 {-|
@@ -37,80 +39,6 @@ type Content
   | Italic Content
   | Underline Content
   | Strike Content
-
-
-
-{-| Converts a list of style names into actual content styles.
-
-examples:
-
-  > stringsToStyle [] "test"
-  Text "test"
-
-  > stringsToStyle ["bold" "underline"] "hey"
-  Bold (Underline (Text "hey"))
-
-  > stringsToStyle ["bold" "link" "https://google.com"] "hello"
-  Bold (Link "https://google.com" (Text "hello"))
-
-  > stringsToStyle ["bold" "link"] "beep"
-  Bold (Text "beep")
-
--}
-stringsToStyle : List String -> String -> Content
-stringsToStyle list string =
-  case list of
-    [] ->
-      Text string
-
-    [style] ->
-      stringToStyle style string
-
-    (style1::style2::styles) ->
-      case style1 of
-        "link" ->
-          Link style2 (stringsToStyle styles string)
-
-        _ ->
-          stringToRecursiveStyle style1 (stringsToStyle (style2::styles) string)
-
-
-stringToStyle : String -> String -> Content
-stringToStyle style string =
-  case style of
-    "text" ->
-      Text string
-
-    "image" ->
-      Image string
-
-    "code" ->
-      Code string
-
-    _ ->
-      stringToRecursiveStyle style (Text string)
-
-
-stringToRecursiveStyle : String -> Content -> Content
-stringToRecursiveStyle string content =
-  case string of
-    "heading" ->
-      Heading content
-
-    "bold" ->
-      Bold content
-
-    "italic" ->
-      Italic content
-
-    "underline" ->
-      Underline content
-
-    "strikethrough" ->
-      Strike content
-
-    _ ->
-      content
 
 
 {-| Set the URL of a link in a content chain
