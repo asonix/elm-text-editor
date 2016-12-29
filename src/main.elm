@@ -14,11 +14,14 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
+
 module Main exposing
     (main)
+
 {-|
 @docs main
 -}
+
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -44,7 +47,7 @@ main =
 
 type alias Model
   = { current_content: List (List Content)
-    , current_styles: List String
+    , current_styles: Content
     , ctrl_pressed: Bool
     }
 
@@ -91,36 +94,36 @@ activateMode : Int -> Model -> Model
 activateMode code model =
   case code of
     66 -> -- B
-      toggleModelStyle "bold" model
+      toggleModelStyle toggleBold model
 
     67 -> -- C
-      toggleModelStyle "code" model
+      toggleModelStyle toggleCode model
 
     72 -> -- H
-      toggleModelStyle "heading" model
+      toggleModelStyle toggleHeading model
 
     73 -> -- I
-      toggleModelStyle "italic" model
+      toggleModelStyle toggleItalic model
 
     76 -> -- L
-      toggleModelStyle "link" model
+      toggleModelStyle (toggleLink "") model
 
     80 -> -- P
-      toggleModelStyle "image" model
+      toggleModelStyle toggleImage model
 
     83 -> -- S
-      toggleModelStyle "strikethrough" model
+      toggleModelStyle toggleStrike model
 
     85 -> -- U
-      toggleModelStyle "underline" model
+      toggleModelStyle toggleUnderline model
 
     _ ->
       model
 
 
-toggleModelStyle : String -> Model -> Model
-toggleModelStyle style model =
-  { model | current_styles = toggleStyle style model.current_styles }
+toggleModelStyle : (Content -> Content) -> Model -> Model
+toggleModelStyle toggleStyle model =
+  { model | current_styles = toggleStyle model.current_styles }
 
 -- VIEW
 
@@ -140,7 +143,9 @@ showModel model =
     [ p []
         [ text (if model.ctrl_pressed then "True" else "False")
         ]
-    , p [] (List.map (\elem -> text elem) model.current_styles)
+    , p []
+        [ text (serializeToString model.current_styles)
+        ]
     ]
 
 
