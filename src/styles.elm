@@ -17,14 +17,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 module Styles exposing
     (Content, setLinkHref, updateText, appendText, toggleCode, toggleImage,
     toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
-    toggleLink, serializeToString)
-
+    toggleLink, serializeToString, renderStyle)
 
 {-|
 @docs Content
 
-@docs stringsToStyle, toggleStyle, setLinkHref, updateText, appendText
+@docs setLinkHref, updateText, appendText, toggleCode, toggleImage, toggleStrike
+@docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
+@docs serializeToString, renderStyle
 -}
+
+import Html exposing (..)
 
 
 {-| Internal representation of Styled Text.
@@ -571,3 +574,60 @@ serializeToString content =
 
     Strike content ->
       "(Strike " + (serializeToString content) + ")"
+
+
+{-| Converts a Content into HTML elements
+
+Dom Nodes galore.
+
+This could be refactored to apply classes to an external span with the addition
+of a helper function
+
+examples:
+
+  > renderStyle (Bold (Text "hello world"))
+  b [] [ text "hello world" ]
+
+  > renderStyle (Link "https://google.com" (Heading (Bold (Italic (Underline (Strike (Text "hello world")))))))
+  a [ href "https://google.com" ]
+    [ h3 []
+        [ b []
+            [ i []
+                [ u []
+                    [ span [ class "strike" ]
+                        [ text "hello world" ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+-}
+renderStyle : Content -> Html
+renderStyle current_content =
+  case current_content of
+    Text str ->
+      text str
+
+    Image str ->
+      image [ src str ] []
+
+    Code str ->
+      code [] [ text str ]
+
+    Link link content ->
+      a [ href link ] [ renderStyle content ]
+
+    Heading content ->
+      h3 [] [ renderStyle content ]
+
+    Bold content ->
+      b [] [ renderStyle content ]
+
+    Italic content ->
+      i [] [ renderStyle content ]
+
+    Underline content ->
+      u [] [ renderStyle content ]
+
+    Strike content ->
+      span [ class "strike" ] [ renderStyle content ]
