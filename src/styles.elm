@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Styles exposing
-    (Content, setLinkHref, updateText, appendText, toggleCode, toggleImage,
+    (Content(..), setLinkHref, updateText, appendText, toggleCode, toggleImage,
     toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
     toggleLink, serializeToString, renderStyle)
 
@@ -28,6 +28,7 @@ module Styles exposing
 -}
 
 import Html exposing (..)
+import Html.Attributes exposing (..)
 
 
 {-| Internal representation of Styled Text.
@@ -207,7 +208,7 @@ toggleLink href current_content =
       content -- remove link if present
 
     Heading content ->
-      Link href Heading content -- don't style headings
+      Link href (Heading content)
 
     Bold content ->
       Link href (Bold content)
@@ -549,31 +550,31 @@ serializeToString : Content -> String
 serializeToString content =
   case content of
     Text str ->
-      "(Text \"" + str + "\")"
+      "(Text \"" ++ str ++ "\")"
 
     Image str ->
-      "(Image \"" + str + "\")"
+      "(Image \"" ++ str ++ "\")"
 
     Code str ->
-      "(Code \"" + str + "\")"
+      "(Code \"" ++ str ++ "\")"
 
     Link href content ->
-      "(Link \"" + href + \" " + (serializeToString content) + ")"
+      "(Link \"" ++ href ++ "\" " ++ (serializeToString content) ++ ")"
 
     Heading content ->
-      "(Heading " + (serializeToString content) + ")"
+      "(Heading " ++ (serializeToString content) ++ ")"
 
     Bold content ->
-      "(Bold " + (serializeToString content) + ")"
+      "(Bold " ++ (serializeToString content) ++ ")"
 
     Italic content ->
-      "(Italic " + (serializeToString content) + ")"
+      "(Italic " ++ (serializeToString content) ++ ")"
 
     Underline content ->
-      "(Underline " + (serializeToString content) + ")"
+      "(Underline " ++ (serializeToString content) ++ ")"
 
     Strike content ->
-      "(Strike " + (serializeToString content) + ")"
+      "(Strike " ++ (serializeToString content) ++ ")"
 
 
 {-| Converts a Content into HTML elements
@@ -602,14 +603,14 @@ examples:
         ]
     ]
 -}
-renderStyle : Content -> Html
+renderStyle : Content -> Html msg
 renderStyle current_content =
   case current_content of
     Text str ->
       text str
 
     Image str ->
-      image [ src str ] []
+      img [ src str ] []
 
     Code str ->
       code [] [ text str ]

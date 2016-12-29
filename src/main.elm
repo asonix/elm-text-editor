@@ -54,7 +54,7 @@ type alias Model
 
 init : (Model, Cmd Msg)
 init = ({ current_content = []
-        , current_styles = []
+        , current_styles = Text ""
         , ctrl_pressed = False
         }, Cmd.none)
 
