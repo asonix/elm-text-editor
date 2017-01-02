@@ -124,7 +124,7 @@ addCurrentStylesToContent model =
             [model.current_styles]
 
       updated_content =
-        List.append (model.current_content |> delListLast) [new_content]
+        setListLast model.current_content new_content
   in
         updated_content
 
