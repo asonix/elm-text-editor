@@ -17,18 +17,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 module Styles exposing
     (Content(..), setLinkHref, updateText, appendText, toggleCode, toggleImage,
     toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
-    toggleLink, serializeToString, renderStyle)
+    toggleLink, serializeToString, renderStyle, isEmpty, getString)
 
 {-|
 @docs Content
 
 @docs setLinkHref, updateText, appendText, toggleCode, toggleImage, toggleStrike
 @docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
-@docs serializeToString, renderStyle
+@docs serializeToString, renderStyle, isEmpty, getString
 -}
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import String
 
 
 {-| Internal representation of Styled Text.
@@ -632,3 +633,81 @@ renderStyle current_content =
 
     Strike content ->
       span [ class "strike" ] [ renderStyle content ]
+
+
+{-| Determines whether there is any text in the content
+
+examples:
+
+  > isEmpty Text ""
+  True
+
+  > isEmtpy Heading (Text "")
+  True
+
+  > isEmpty Heading (Text "h")
+  False
+
+-}
+isEmpty : Content -> Bool
+isEmpty current_content =
+  case current_content of
+    Text str ->
+      String.isEmpty str
+
+    Image str ->
+      String.isEmpty str
+
+    Code str ->
+      String.isEmpty str
+
+    Link _ content ->
+      isEmpty content
+
+    Heading content ->
+      isEmpty content
+
+    Bold content ->
+      isEmpty content
+
+    Italic content ->
+      isEmpty content
+
+    Underline content ->
+      isEmpty content
+
+    Strike content ->
+      isEmpty content
+
+
+{-| getString returns the string from inside the content
+-}
+getString : Content -> String
+getString current_content =
+  case current_content of
+    Text str ->
+      str
+
+    Image str ->
+      str
+
+    Code str ->
+      str
+
+    Link _ content ->
+      getString content
+
+    Heading content ->
+      getString content
+
+    Bold content ->
+      getString content
+
+    Italic content ->
+      getString content
+
+    Underline content ->
+      getString content
+
+    Strike content ->
+      getString content

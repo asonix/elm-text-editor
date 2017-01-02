@@ -27,9 +27,13 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import String exposing (..)
 import Styles exposing (..)
+import Keys exposing (..)
 import Keyboard
 
 -- MAIN
+
+debug : Bool
+debug = False
 
 {-| The main function of the application
 -}
@@ -45,17 +49,62 @@ main =
 
 -- MODEL
 
-type alias Model
-  = { current_content: List (List Content)
-    , current_styles: Content
-    , ctrl_pressed: Bool
-    }
+type alias Model =
+  { current_content: List (List Content)
+  , current_styles: Content
+  , mods: Modifiers
+  }
 
+
+type alias Modifiers =
+  { ctrl: Bool
+  , alt: Bool
+  , shift: Bool
+  }
+
+
+serializeContentLists : (List a -> b) -> (Content -> a) -> List (List Content) -> List b
+serializeContentLists transform inner_map =
+  let
+      scl = List.map inner_map
+  in
+      List.map (\contents -> transform (scl contents))
+
+
+addCurrentStylesToContent : Model -> List (List Content)
+addCurrentStylesToContent model =
+  let
+      last_content = model.current_content |> List.reverse |> List.head
+
+      new_content =
+        case last_content of
+          Just content ->
+            List.append content [model.current_styles]
+
+          Nothing ->
+            [model.current_styles]
+
+      updated_content =
+        case model.current_content |> List.reverse |> List.tail of
+          Just content ->
+            (new_content::content) |> List.reverse
+
+          Nothing ->
+            [new_content]
+  in
+        updated_content
+
+
+-- INIT
 
 init : (Model, Cmd Msg)
 init = ({ current_content = []
         , current_styles = Text ""
-        , ctrl_pressed = False
+        , mods =
+          { ctrl = False
+          , alt = False
+          , shift = False
+          }
         }, Cmd.none)
 
 
@@ -64,89 +113,162 @@ init = ({ current_content = []
 type Msg
   = KeyDown Keyboard.KeyCode
   | KeyUp Keyboard.KeyCode
+  | NewText String
 
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
     KeyDown code ->
-      case code of
-        17 ->
-          ({model | ctrl_pressed = True}, Cmd.none)
-
-        _ ->
-          if model.ctrl_pressed then
-            (activateMode code model, Cmd.none)
-
-          else
-            (model, Cmd.none)
+      keydown model code
 
     KeyUp code ->
-      case code of
-        17 ->
-          ({model | ctrl_pressed = False}, Cmd.none)
+      keyup model code
+
+    NewText text ->
+      ({model | current_styles = updateText text model.current_styles}, Cmd.none)
+
+
+keydown : Model -> Int -> (Model, Cmd Msg)
+keydown model key_code =
+  let
+      mods = model.mods
+      toggle = toggleModelStyle model
+  in
+      case handleCode model.mods.alt key_code of
+        Just Delete ->
+          (model, Cmd.none)
+
+        Just Ctrl ->
+          ({model | mods = {mods | ctrl = True}}, Cmd.none)
+
+        Just Alt ->
+          ({model | mods = {mods | alt = True}}, Cmd.none)
+
+        Just Shift ->
+          ({model | mods = {mods | shift = True}}, Cmd.none)
+
+        Just ToggleCode ->
+          (toggle toggleCode, Cmd.none)
+
+        Just ToggleImage ->
+          (toggle toggleImage, Cmd.none)
+
+        Just ToggleLink ->
+          (toggle (toggleLink ""), Cmd.none)
+
+        Just ToggleHeading ->
+          (toggle toggleHeading, Cmd.none)
+
+        Just ToggleBold ->
+          (toggle toggleBold, Cmd.none)
+
+        Just ToggleItalic ->
+          (toggle toggleItalic, Cmd.none)
+
+        Just ToggleUnderline ->
+          (toggle toggleUnderline, Cmd.none)
+
+        Just ToggleStrike ->
+          (toggle toggleStrike, Cmd.none)
+
+        Nothing ->
+          (model, Cmd.none)
+
+
+keyup : Model -> Int -> (Model, Cmd Msg)
+keyup model key_code =
+  let
+      mods = model.mods
+  in
+      case handleCode model.mods.alt key_code of
+        Just Delete ->
+          (model, Cmd.none)
+
+        Just Ctrl ->
+          ({model | mods = {mods | ctrl = False}}, Cmd.none)
+
+        Just Alt ->
+          ({model | mods = {mods | alt = False}}, Cmd.none)
+
+        Just Shift ->
+          ({model | mods = {mods | shift = False}}, Cmd.none)
 
         _ ->
           (model, Cmd.none)
 
 
-activateMode : Int -> Model -> Model
-activateMode code model =
-  case code of
-    66 -> -- B
-      toggleModelStyle toggleBold model
+toggleModelStyle : Model -> (Content -> Content) -> Model
+toggleModelStyle model toggleStyle =
+  let
+      empty = Styles.isEmpty model.current_styles
 
-    67 -> -- C
-      toggleModelStyle toggleCode model
+      new_styles = model.current_styles |> toggleStyle |> (updateText "")
 
-    72 -> -- H
-      toggleModelStyle toggleHeading model
+      updated_content = addCurrentStylesToContent model
+  in
+      if not empty then
+        { model | current_content = updated_content, current_styles = new_styles }
+      else
+        { model | current_styles = toggleStyle model.current_styles }
 
-    73 -> -- I
-      toggleModelStyle toggleItalic model
-
-    76 -> -- L
-      toggleModelStyle (toggleLink "") model
-
-    80 -> -- P
-      toggleModelStyle toggleImage model
-
-    83 -> -- S
-      toggleModelStyle toggleStrike model
-
-    85 -> -- U
-      toggleModelStyle toggleUnderline model
-
-    _ ->
-      model
-
-
-toggleModelStyle : (Content -> Content) -> Model -> Model
-toggleModelStyle toggleStyle model =
-  { model | current_styles = toggleStyle model.current_styles }
 
 -- VIEW
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ div []
-        [ text "hello world"
+  let
+      input_value = getString model.current_styles
+
+      serialized =
+        serializeContentLists
+          (p [])
+          (renderStyle)
+          (addCurrentStylesToContent model)
+  in
+      div []
+        [ div []
+            [ input [ placeholder "hello world", onInput NewText, value input_value ] []
+            , div [] serialized
+            ]
+        , showModel model
         ]
-    , showModel model
-    ]
 
 
 showModel : Model -> Html Msg
 showModel model =
-  div [ class "debug" ]
-    [ p []
-        [ text (if model.ctrl_pressed then "True" else "False")
-        ]
-    , p []
-        [ text (serializeToString model.current_styles)
-        ]
-    ]
+  let
+      serialized =
+        serializeContentLists
+          (p [])
+          (\c -> text (serializeToString c))
+          model.current_content
+  in
+      if debug then
+        div [ class "debug" ]
+          [ p []
+              [ text "ctrl: "
+              , text (if model.mods.ctrl then "True" else "False")
+              ]
+          , p []
+              [ text "alt: "
+              , text (if model.mods.alt then "True" else "False")
+              ]
+          , p []
+              [ text "shift: "
+              , text (if model.mods.shift then "True" else "False")
+              ]
+          , p []
+              [ text "styles on input: "
+              , text (serializeToString model.current_styles)
+              ]
+          , div []
+              [ text "all input data: "
+              , div [] serialized
+              ]
+          ]
+        else
+          text ""
 
 
 -- SUBSCRIPTIONS
