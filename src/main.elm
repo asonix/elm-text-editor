@@ -63,6 +63,45 @@ type alias Modifiers =
   }
 
 
+getListLast : List a -> Maybe a
+getListLast list =
+  case list of
+    [] ->
+      Nothing
+
+    [item] ->
+      Just item
+
+    (x::xs) ->
+      getListLast xs
+
+
+setListLast : List a -> a -> List a
+setListLast list item =
+  case list of
+    [] ->
+      [item]
+
+    [_] ->
+      [item]
+
+    (x::xs) ->
+      x::setListLast xs item
+
+
+delListLast : List a -> List a
+delListLast list =
+  case list of
+    [] ->
+      []
+
+    [_] ->
+      []
+
+    (x::xs) ->
+      x::delListLast xs
+
+
 serializeContentLists : (List a -> b) -> (Content -> a) -> List (List Content) -> List b
 serializeContentLists transform inner_map =
   let
@@ -74,7 +113,7 @@ serializeContentLists transform inner_map =
 addCurrentStylesToContent : Model -> List (List Content)
 addCurrentStylesToContent model =
   let
-      last_content = model.current_content |> List.reverse |> List.head
+      last_content = model.current_content |> getListLast
 
       new_content =
         case last_content of
@@ -85,12 +124,7 @@ addCurrentStylesToContent model =
             [model.current_styles]
 
       updated_content =
-        case model.current_content |> List.reverse |> List.tail of
-          Just content ->
-            (new_content::content) |> List.reverse
-
-          Nothing ->
-            [new_content]
+        List.append (model.current_content |> delListLast) [new_content]
   in
         updated_content
 
