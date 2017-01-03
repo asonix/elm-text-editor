@@ -179,7 +179,7 @@ keydown model key_code =
           (model, Cmd.none)
 
         Just NewParagraph ->
-          (model, Cmd.none)
+          (newParagraph model, Cmd.none)
 
         Just ToggleCode ->
           (toggle toggleCode, Cmd.none)
@@ -222,9 +222,11 @@ fromMaybe fn item =
 delete : Model -> Model
 delete model =
   let
-      setContentLast = setListLast model.current_content
+      setContentLast =
+        setListLast model.current_content
 
-      justRemoveNestedLast x = Just (x |> delListLast |> setContentLast)
+      justRemoveNestedLast x =
+        Just (x |> delListLast |> setContentLast)
 
       last_style =
         model.current_content
@@ -254,6 +256,19 @@ delete model =
 
       else
         model
+
+
+newParagraph : Model -> Model
+newParagraph model =
+  let
+      updated_content = addCurrentStylesToContent model
+
+      updated_styles = updateText "" model.current_styles
+  in
+      { model
+          | current_styles = updated_styles
+          , current_content = updated_content ++ [[]]
+      }
 
 
 keyup : Model -> Int -> (Model, Cmd Msg)
