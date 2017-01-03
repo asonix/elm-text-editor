@@ -56,13 +56,6 @@ type alias Model =
   }
 
 
-type alias Modifiers =
-  { ctrl: Bool
-  , alt: Bool
-  , shift: Bool
-  }
-
-
 getListLast : List a -> Maybe a
 getListLast list =
   case list of
@@ -169,9 +162,9 @@ keydown model key_code =
       mods = model.mods
       toggle = toggleModelStyle model
   in
-      case handleCode model.mods.alt key_code of
+      case handleCode model.mods key_code of
         Just Delete ->
-          (model, Cmd.none)
+          (delete model, Cmd.none)
 
         Just Ctrl ->
           ({model | mods = {mods | ctrl = True}}, Cmd.none)
@@ -181,6 +174,12 @@ keydown model key_code =
 
         Just Shift ->
           ({model | mods = {mods | shift = True}}, Cmd.none)
+
+        Just NewLine ->
+          (model, Cmd.none)
+
+        Just NewParagraph ->
+          (model, Cmd.none)
 
         Just ToggleCode ->
           (toggle toggleCode, Cmd.none)
@@ -210,12 +209,59 @@ keydown model key_code =
           (model, Cmd.none)
 
 
+fromMaybe : (a -> Maybe b) -> Maybe a -> Maybe b
+fromMaybe fn item =
+  case item of
+    Just thing ->
+      fn thing
+
+    Nothing ->
+      Nothing
+
+
+delete : Model -> Model
+delete model =
+  let
+      setContentLast = setListLast model.current_content
+
+      justRemoveNestedLast x = Just (x |> delListLast |> setContentLast)
+
+      last_style =
+        model.current_content
+          |> getListLast
+          |> fromMaybe (getListLast)
+
+      content_without_last_style =
+        model.current_content
+          |> getListLast
+          |> fromMaybe (justRemoveNestedLast)
+  in
+      if Styles.isEmpty model.current_styles then
+        case last_style of
+          Just style ->
+            case content_without_last_style  of
+              Just content ->
+                { model
+                    | current_styles = style
+                    , current_content = content
+                }
+
+              Nothing ->
+                model
+
+          Nothing ->
+            model
+
+      else
+        model
+
+
 keyup : Model -> Int -> (Model, Cmd Msg)
 keyup model key_code =
   let
       mods = model.mods
   in
-      case handleCode model.mods.alt key_code of
+      case handleCode model.mods key_code of
         Just Delete ->
           (model, Cmd.none)
 

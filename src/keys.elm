@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Keys exposing
-    (KeyCmd(..), handleCode)
+    (KeyCmd(..), Modifiers, handleCode)
 
 {-|
 @docs KeyCmd
@@ -24,7 +24,6 @@ module Keys exposing
 -}
 
 -- Imports
-import Char
 
 
 -- Types
@@ -36,6 +35,8 @@ type KeyCmd
   | Ctrl
   | Alt
   | Shift
+  | NewLine
+  | NewParagraph
   | ToggleCode
   | ToggleImage
   | ToggleLink
@@ -46,12 +47,21 @@ type KeyCmd
   | ToggleStrike
 
 
+{-| Modifiers are keys that, when held, change the command caused by other keys
+-}
+type alias Modifiers =
+  { ctrl: Bool
+  , alt: Bool
+  , shift: Bool
+  }
+
+
 -- Functions
 
 {-| handleCode returns a KeyCmd representing the previous keyboard event
 -}
-handleCode : Bool -> Int -> Maybe KeyCmd
-handleCode modifier key_code =
+handleCode : Modifiers -> Int -> Maybe KeyCmd
+handleCode modifiers key_code =
   case key_code of
     8 ->
       Just Delete
@@ -66,12 +76,12 @@ handleCode modifier key_code =
       Just Alt
 
     _ ->
-      handleToggles modifier key_code
+      handleToggles modifiers key_code
 
 
-handleToggles : Bool -> Int -> Maybe KeyCmd
-handleToggles modifier key_code =
-  if modifier then
+handleToggles : Modifiers -> Int -> Maybe KeyCmd
+handleToggles modifiers key_code =
+  if modifiers.alt then
     case key_code of
       66 -> -- B
         Just ToggleBold
@@ -101,4 +111,9 @@ handleToggles modifier key_code =
         Nothing
 
   else
-    Nothing
+    case key_code of
+      13 -> -- Enter
+        Just (if modifiers.shift then NewLine else NewParagraph)
+
+      _ ->
+        Nothing
