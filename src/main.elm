@@ -239,17 +239,22 @@ delete model =
           |> fromMaybe (justRemoveNestedLast)
   in
       if Styles.isEmpty model.current_styles then
-        case last_style of
-          Just style ->
-            case content_without_last_style  of
-              Just content ->
+        case content_without_last_style of
+          Just content ->
+            case last_style of
+              Just style ->
                 { model
                     | current_styles = style
                     , current_content = content
                 }
 
               Nothing ->
-                model
+                { model
+                    | current_content =
+                        model.current_content
+                        |> delListLast
+                }
+                |> delete
 
           Nothing ->
             model
