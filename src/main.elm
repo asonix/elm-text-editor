@@ -28,6 +28,7 @@ import Html.Events exposing (..)
 import String exposing (..)
 import Styles exposing (..)
 import Keys exposing (..)
+import Array exposing (..)
 import Keyboard
 
 -- MAIN
@@ -50,74 +51,63 @@ main =
 -- MODEL
 
 type alias Model =
-  { current_content: List (List Content)
+  { current_content: Array (Array Content)
   , current_styles: Content
   , mods: Modifiers
   }
 
 
-getListLast : List a -> Maybe a
-getListLast list =
-  case list of
-    [] ->
+getArrayLast : Array a -> Maybe a
+getArrayLast array =
+  case Array.length array of
+    0 ->
       Nothing
 
-    [item] ->
-      Just item
-
-    (x::xs) ->
-      getListLast xs
+    length ->
+      Array.get (length - 1) array
 
 
-setListLast : List a -> a -> List a
-setListLast list item =
-  case list of
-    [] ->
-      [item]
+setArrayLast : Array a -> a -> Array a
+setArrayLast array item =
+  case Array.length array of
+    0 ->
+      Array.empty |> Array.push item
 
-    [_] ->
-      [item]
-
-    (x::xs) ->
-      x::setListLast xs item
+    length ->
+      Array.set (length-1) item array
 
 
-delListLast : List a -> List a
-delListLast list =
-  case list of
-    [] ->
-      []
-
-    [_] ->
-      []
-
-    (x::xs) ->
-      x::delListLast xs
+delArrayLast : Array a -> Array a
+delArrayLast array =
+  Array.slice 0 (Array.length array - 1) array
 
 
-serializeContentLists : (List a -> b) -> (Content -> a) -> List (List Content) -> List b
-serializeContentLists transform inner_map =
+serializeContentArrays : (List a -> b) -> (Content -> a) -> Array (Array Content) -> List b
+serializeContentArrays transform inner_map content_structure =
   let
-      scl = List.map inner_map
+      scl x =
+        Array.map inner_map x
+          |> Array.toList
   in
-      List.map (\contents -> transform (scl contents))
+      Array.map (\contents -> transform (scl contents)) content_structure
+        |> Array.toList
 
 
-addCurrentStylesToContent : Model -> List (List Content)
+addCurrentStylesToContent : Model -> Array (Array Content)
 addCurrentStylesToContent model =
   let
-      last_content = model.current_content |> getListLast
+      last_content = model.current_content |> getArrayLast
 
       new_content =
         case last_content of
           Just content ->
-            List.append content [model.current_styles]
+            Array.push model.current_styles content 
 
           Nothing ->
-            [model.current_styles]
+            Array.fromList [model.current_styles]
 
       updated_content =
-        setListLast model.current_content new_content
+        setArrayLast model.current_content new_content
   in
         updated_content
 
@@ -125,7 +115,7 @@ addCurrentStylesToContent model =
 -- INIT
 
 init : (Model, Cmd Msg)
-init = ({ current_content = []
+init = ({ current_content = Array.empty
         , current_styles = Text ""
         , mods =
           { ctrl = False
@@ -223,19 +213,19 @@ delete : Model -> Model
 delete model =
   let
       setContentLast =
-        setListLast model.current_content
+        setArrayLast model.current_content
 
       justRemoveNestedLast x =
-        Just (x |> delListLast |> setContentLast)
+        Just (x |> delArrayLast |> setContentLast)
 
       last_style =
         model.current_content
-          |> getListLast
-          |> fromMaybe (getListLast)
+          |> getArrayLast
+          |> fromMaybe (getArrayLast)
 
       content_without_last_style =
         model.current_content
-          |> getListLast
+          |> getArrayLast
           |> fromMaybe (justRemoveNestedLast)
   in
       if Styles.isEmpty model.current_styles then
@@ -252,7 +242,7 @@ delete model =
                 { model
                     | current_content =
                         model.current_content
-                        |> delListLast
+                        |> delArrayLast
                 }
                 |> delete
 
@@ -272,7 +262,7 @@ newParagraph model =
   in
       { model
           | current_styles = updated_styles
-          , current_content = updated_content ++ [[]]
+          , current_content = Array.push Array.empty updated_content
       }
 
 
@@ -321,7 +311,7 @@ view model =
       input_value = getString model.current_styles
 
       serialized =
-        serializeContentLists
+        serializeContentArrays
           (p [])
           (renderStyle)
           (addCurrentStylesToContent model)
@@ -339,7 +329,7 @@ showModel : Model -> Html Msg
 showModel model =
   let
       serialized =
-        serializeContentLists
+        serializeContentArrays
           (p [])
           (\c -> text (serializeToString c))
           model.current_content
