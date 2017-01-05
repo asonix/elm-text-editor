@@ -30,11 +30,12 @@ import Styles exposing (..)
 import Keys exposing (..)
 import Array exposing (..)
 import Keyboard
+import Debug
 
 -- MAIN
 
 debug : Bool
-debug = False
+debug = True
 
 {-| The main function of the application
 -}
@@ -53,7 +54,16 @@ main =
 type alias Model =
   { current_content: Array (Array Content)
   , current_styles: Content
+  , cursor_position: CursorPosition
   , mods: Modifiers
+  , input: String
+  }
+
+
+type alias CursorPosition =
+  { paragraph: Int
+  , style: Int
+  , character: Int
   }
 
 
@@ -96,12 +106,19 @@ serializeContentArrays transform inner_map content_structure =
 addCurrentStylesToContent : Model -> Array (Array Content)
 addCurrentStylesToContent model =
   let
-      last_content = model.current_content |> getArrayLast
+      used_paragraph = model.current_content |> Array.get model.cursor_position.paragraph
+
+      used_style = used_paragraph |> fromMaybe (Array.get model.cursor_position.style)
 
       new_content =
-        case last_content of
+        case used_paragraph of
           Just content ->
-            Array.push model.current_styles content 
+            case used_style of
+              Just style ->
+                Array.set model.cursor_position.style model.current_styles content
+
+              Nothing ->
+                Array.push model.current_styles content
 
           Nothing ->
             Array.fromList [model.current_styles]
@@ -122,6 +139,12 @@ init = ({ current_content = Array.empty
           , alt = False
           , shift = False
           }
+        , cursor_position =
+          { paragraph = 0
+          , style = 0
+          , character = 0
+          }
+        , input = ""
         }, Cmd.none)
 
 
@@ -129,6 +152,7 @@ init = ({ current_content = Array.empty
 
 type Msg
   = KeyDown Keyboard.KeyCode
+  | KeyPress Keyboard.KeyCode
   | KeyUp Keyboard.KeyCode
   | NewText String
 
@@ -139,11 +163,14 @@ update msg model =
     KeyDown code ->
       keydown model code
 
+    KeyPress code ->
+      (model, Cmd.none)
+
     KeyUp code ->
       keyup model code
 
     NewText text ->
-      ({model | current_styles = updateText text model.current_styles}, Cmd.none)
+      (inputToCurrentStyle {model | input = text}, Cmd.none)
 
 
 keydown : Model -> Int -> (Model, Cmd Msg)
@@ -164,6 +191,18 @@ keydown model key_code =
 
         Just Shift ->
           ({model | mods = {mods | shift = True}}, Cmd.none)
+
+        Just Left ->
+          (model, Cmd.none)
+
+        Just Up ->
+          (model, Cmd.none)
+
+        Just Right ->
+          (model, Cmd.none)
+
+        Just Down ->
+          (model, Cmd.none)
 
         Just NewLine ->
           (model, Cmd.none)
@@ -197,6 +236,49 @@ keydown model key_code =
 
         Nothing ->
           (model, Cmd.none)
+
+
+inputToCurrentStyle : Model -> Model
+inputToCurrentStyle model =
+    let
+        updated_style = appendText model.input model.current_styles
+
+        cursor = model.cursor_position
+    in
+        { model
+            | current_styles = updated_style
+            , input = ""
+            , cursor_position =
+                { cursor |
+                    character = cursor.character + 1
+                }
+        }
+
+
+inputFromCurrentStyle : Model -> Model
+inputFromCurrentStyle model =
+    let
+        text = getString model.current_styles
+
+        split_point = String.length text - 1
+
+        updated_style =
+          text
+            |> String.left split_point
+            |> (\x -> updateText x model.current_styles)
+
+        last_char = String.right split_point text
+
+        cursor = model.cursor_position
+    in
+        { model
+            | current_styles = updated_style
+            , input = last_char
+            , cursor_position =
+                { cursor |
+                    character = cursor.character - 1
+                }
+        }
 
 
 fromMaybe : (a -> Maybe b) -> Maybe a -> Maybe b
@@ -259,10 +341,18 @@ newParagraph model =
       updated_content = addCurrentStylesToContent model
 
       updated_styles = updateText "" model.current_styles
+
+      cursor = model.cursor_position
   in
       { model
           | current_styles = updated_styles
           , current_content = Array.push Array.empty updated_content
+          , cursor_position =
+              { cursor
+                  | paragraph = cursor.paragraph + 1
+                  , style = 0
+                  , character = 0
+              }
       }
 
 
@@ -296,11 +386,21 @@ toggleModelStyle model toggleStyle =
       new_styles = model.current_styles |> toggleStyle |> (updateText "")
 
       updated_content = addCurrentStylesToContent model
+
+      cursor = model.cursor_position
   in
-      if not empty then
-        { model | current_content = updated_content, current_styles = new_styles }
-      else
+      if empty then
         { model | current_styles = toggleStyle model.current_styles }
+      else
+        { model
+            | current_content = updated_content
+            , current_styles = new_styles
+            , cursor_position =
+                { cursor
+                    | style = cursor.style + 1
+                    , character = 0
+                }
+        }
 
 
 -- VIEW
@@ -308,8 +408,6 @@ toggleModelStyle model toggleStyle =
 view : Model -> Html Msg
 view model =
   let
-      input_value = getString model.current_styles
-
       serialized =
         serializeContentArrays
           (p [])
@@ -318,7 +416,7 @@ view model =
   in
       div []
         [ div []
-            [ input [ placeholder "hello world", onInput NewText, value input_value ] []
+            [ input [ placeholder "hello world", onInput NewText, value model.input ] []
             , div [] serialized
             ]
         , showModel model
@@ -349,16 +447,30 @@ showModel model =
               , text (if model.mods.shift then "True" else "False")
               ]
           , p []
+              [ text "cursor position: ("
+              , text (toString model.cursor_position.paragraph)
+              , text ", "
+              , text (toString model.cursor_position.style)
+              , text ", "
+              , text (toString model.cursor_position.character)
+              , text ")"
+              ]
+          , p []
               [ text "styles on input: "
               , text (serializeToString model.current_styles)
+              ]
+          , p []
+              [ text "input text: "
+              , text model.input
               ]
           , div []
               [ text "all input data: "
               , div [] serialized
               ]
           ]
-        else
-          text ""
+
+      else
+        text ""
 
 
 -- SUBSCRIPTIONS
@@ -367,5 +479,6 @@ subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ Keyboard.downs KeyDown
+    , Keyboard.presses KeyPress
     , Keyboard.ups KeyUp
     ]
