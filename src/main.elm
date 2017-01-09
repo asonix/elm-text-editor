@@ -66,7 +66,8 @@ type alias CursorPosition =
   }
 
 
-type alias Content = Array (Array Style)
+type alias Paragraph = Array Style
+type alias Content = Array Paragraph
 
 
 getArrayLast : Array a -> Maybe a
@@ -107,7 +108,7 @@ deleteStyleFromContent paragraph_index style_index content =
     Just paragraph ->
       paragraph
         |> delFromArray style_index
-        |> (\paragraph -> Array.set paragraph_index paragraph content)
+        |> (flip (Array.set paragraph_index) content)
 
     Nothing ->
       content
@@ -120,7 +121,7 @@ serializeContent transform inner_map content_structure =
         Array.map inner_map x
           |> Array.toList
   in
-      Array.map (\contents -> transform (scl contents)) content_structure
+      Array.map (transform << scl) content_structure
         |> Array.toList
 
 
@@ -264,13 +265,28 @@ inputToContent input model =
 
 
 fromMaybe : (a -> Maybe b) -> Maybe a -> Maybe b
-fromMaybe fn item =
-  case item of
-    Just thing ->
-      fn thing
+fromMaybe fn = fromMaybeWithDefault fn Nothing
+
+
+fromMaybeWithDefault : (a -> b) -> b -> Maybe a -> b
+fromMaybeWithDefault fn default maybe_item =
+  case maybe_item of
+    Just item ->
+      fn item
 
     Nothing ->
-      Nothing
+      default
+
+fromTwoMaybes : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
+fromTwoMaybes fn maybe_one maybe_two =
+  fromTwoMaybesWithDefault fn Nothing maybe_one maybe_two
+
+fromTwoMaybesWithDefault : (a -> b -> c) -> c -> Maybe a -> Maybe b -> c
+fromTwoMaybesWithDefault fn default maybe_one maybe_two =
+  fromMaybeWithDefault
+    (\x -> fromMaybeWithDefault (fn x) default maybe_two)
+    default
+    maybe_one
 
 
 delete : Model -> Model
@@ -304,24 +320,14 @@ mergeParagraphs model =
       paragraph_index =
         model.cursor_position.paragraph
 
-      current_paragraph =
+      maybe_current_paragraph =
         Array.get paragraph_index model.content
 
-      previous_paragraph =
+      maybe_previous_paragraph =
         Array.get (paragraph_index - 1) model.content
 
       maybe_merged_paragraphs =
-        case current_paragraph of
-          Just c_paragraph ->
-            case previous_paragraph of
-              Just p_paragraph ->
-                Just (Array.append p_paragraph c_paragraph)
-
-              Nothing ->
-                Nothing
-
-          Nothing ->
-            Nothing
+        fromTwoMaybes (curry (Just << uncurry Array.append)) maybe_previous_paragraph maybe_current_paragraph
 
       maybe_updated_content =
         case maybe_merged_paragraphs of
@@ -329,31 +335,20 @@ mergeParagraphs model =
             model.content
               |> Array.set (paragraph_index - 1) merged_paragraphs
               |> delFromArray paragraph_index
-              |> (\x -> Just x)
+              |> Just
 
           Nothing ->
             Nothing
 
-      style_index = 
-        case previous_paragraph of
-          Just p_paragraph ->
-            Array.length p_paragraph - 1
-
-          Nothing ->
-            0
+      style_index =
+        maybe_previous_paragraph
+          |> fromMaybeWithDefault (flip (-) 1 << Array.length) 0
 
       character_index =
-        case previous_paragraph of
-          Just p_paragraph ->
-            case Array.get style_index p_paragraph of
-              Just style ->
-                String.length (getText style)
-
-              Nothing ->
-                0
-
-          Nothing ->
-            0
+        maybe_previous_paragraph
+          |> fromMaybe (Array.get style_index)
+          |> fromMaybe (Just << String.length << getText)
+          |> fromMaybeWithDefault identity 0
 
       cursor =
         model.cursor_position
@@ -364,23 +359,22 @@ mergeParagraphs model =
             , style = style_index
             , character = character_index
         }
+
+      updateModel updated_content =
+        { model
+            | content = updated_content
+            , cursor_position = updated_cursor
+        }
   in
       if model.cursor_position.character == 0 && model.cursor_position.style == 0 then
-        case maybe_updated_content of
-          Just updated_content ->
-            { model
-                | content = updated_content
-                , cursor_position = updated_cursor
-            }
-
-          Nothing ->
-            model
+        maybe_updated_content
+          |> fromMaybeWithDefault (updateModel) model
 
       else
         model
 
 
-getStyleFromContent : Content -> Int -> Int -> Maybe Style
+getStyleFromContent : Content -> Int -> Int -> Maybe (Paragraph, Style)
 getStyleFromContent content paragraph_index style_index =
   let
       maybe_paragraph =
@@ -390,7 +384,7 @@ getStyleFromContent content paragraph_index style_index =
         maybe_paragraph
           |> fromMaybe (Array.get style_index)
   in
-      maybe_style
+      fromTwoMaybes (curry Just) maybe_paragraph maybe_style
 
 
 setStyleInContent : Content -> Int -> Int -> Style -> Content
@@ -400,26 +394,19 @@ setStyleInContent content paragraph_index style_index updated_style =
         Array.get paragraph_index content
 
       maybe_updated_paragraph =
-        case maybe_paragraph of
-          Just paragraph ->
-            Just (Array.set style_index updated_style paragraph)
-
-          Nothing ->
-            Nothing
+        maybe_paragraph
+          |> fromMaybe (Just << Array.set style_index updated_style)
   in
-      case maybe_updated_paragraph of
-        Just updated_paragraph ->
-          Array.set paragraph_index updated_paragraph content
-
-        Nothing ->
-          content
+      maybe_updated_paragraph
+        |> fromMaybeWithDefault (flip (Array.set paragraph_index) content) content
 
 
 modifyStyleInContent : Content -> Int -> Int -> (Style -> Style) -> Maybe (Content)
 modifyStyleInContent content paragraph_index style_index fn =
   getStyleFromContent content paragraph_index style_index
-    |> fromMaybe (\style -> Just (fn style))
-    |> fromMaybe (\style -> Just (setStyleInContent content paragraph_index style_index style))
+    |> fromMaybe (Just << Tuple.second)
+    |> fromMaybe (Just << fn)
+    |> fromMaybe (Just << setStyleInContent content paragraph_index style_index)
 
 
 deleteCharFromString : Int -> String -> String
@@ -432,7 +419,7 @@ deleteCharFromStyle index style =
   style
     |> getText
     |> deleteCharFromString index
-    |> (\text -> updateText text style)
+    |> (flip (updateText) style)
 
 
 getCurrentStyle : Model -> Style
@@ -444,12 +431,8 @@ getCurrentStyle model =
           model.cursor_position.paragraph
           model.cursor_position.style
   in
-      case maybe_current_style of
-        Just current_style ->
-          current_style
-
-        Nothing ->
-          Text ""
+      maybe_current_style
+        |> fromMaybeWithDefault (Tuple.second) (Text "")
 
 
 -- Should only be called when model.cursor_position.character is 0
@@ -457,38 +440,17 @@ getCurrentStyle model =
 deleteFromPreviousStyle : Model -> Model
 deleteFromPreviousStyle model =
   let
-      paragraph_index = model.cursor_position.paragraph
-
       previous_style_index = model.cursor_position.style - 1
 
-      maybeGetStyleTextLength style =
-        style
-          |> getText
-          |> String.length
-          |> (\x -> Just x)
-
-      maybe_previous_style_length =
-        (getStyleFromContent
-          model.content
-          paragraph_index
-          previous_style_index)
-            |> fromMaybe (maybeGetStyleTextLength)
-
-      maybe_current_style_length =
-        (getStyleFromContent
-          model.content
-          model.cursor_position.paragraph
-          model.cursor_position.style)
-            |> fromMaybe (maybeGetStyleTextLength)
-
+      getStyleLength =
+        fromMaybeWithDefault (String.length << getText << Tuple.second) 0
+          << getStyleFromContent model.content model.cursor_position.paragraph
 
       previous_style_length =
-        case maybe_previous_style_length of
-          Just length ->
-            length
+        getStyleLength previous_style_index
 
-          Nothing ->
-            0
+      current_style_length =
+        getStyleLength model.cursor_position.style
 
       updated_content =
         deleteStyleFromContent
@@ -505,8 +467,8 @@ deleteFromPreviousStyle model =
         }
 
       updated_model =
-        case maybe_current_style_length of
-          Just 0 ->
+        case current_style_length of
+          0 ->
             { model
                 | content = updated_content
                 , cursor_position = updated_cursor
@@ -549,20 +511,19 @@ deleteFromStyle model =
 
       updated_cursor =
         { cursor | character = character_index - 1 }
+
+      updateModel updated_content =
+        { model
+            | content = updated_content
+            , cursor_position = updated_cursor
+        }
   in
       if model.cursor_position.character == 0 then
         model
 
       else
-        case maybe_updated_content of
-          Just content ->
-            { model
-                | content = content
-                , cursor_position = updated_cursor
-            }
-
-          Nothing ->
-            model
+        maybe_updated_content
+          |> fromMaybeWithDefault (updateModel) model
 
 
 
@@ -573,28 +534,16 @@ newParagraph model =
         Array.get model.cursor_position.paragraph model.content
 
       maybe_style =
-        case maybe_paragraph of
-          Just paragraph ->
-            Array.get model.cursor_position.style paragraph
-
-          Nothing ->
-            Nothing
+        maybe_paragraph
+          |> fromMaybe (Array.get model.cursor_position.style)
 
       maybe_text =
-        case maybe_style of
-          Just style ->
-            Just (getText style)
-
-          Nothing ->
-            Nothing
+        maybe_style
+          |> fromMaybe (Just << getText)
 
       maybe_text_after =
-        case maybe_text of
-          Just text ->
-            Just (String.dropLeft model.cursor_position.character text)
-
-          Nothing ->
-            Nothing
+        maybe_text
+          |> fromMaybe (Just << String.dropLeft model.cursor_position.character)
 
       maybe_text_before =
         case maybe_text of
@@ -609,18 +558,12 @@ newParagraph model =
           Nothing ->
             Nothing
 
-      style_text x =
-        case x of
-          Just text ->
-            case maybe_style of
-              Just style ->
-                Array.empty |> Array.push (updateText text style)
-
-              Nothing ->
-                Array.empty
-
-          Nothing ->
-            Array.empty
+      style_text text =
+        fromTwoMaybesWithDefault
+          (curry (Array.repeat 1 << uncurry updateText))
+          Array.empty
+          text
+          maybe_style
 
       more_styles =
         case maybe_paragraph of
@@ -631,24 +574,27 @@ newParagraph model =
             Array.empty
 
       first_styles =
-        case maybe_paragraph of
-          Just paragraph ->
-            Array.slice 0 model.cursor_position.style paragraph
+        maybe_paragraph
+          |> fromMaybeWithDefault (Array.slice 0 model.cursor_position.style) Array.empty
 
-          Nothing ->
-            Array.empty
+      defaultIfEmpty array =
+        if Array.isEmpty array then
+          Array.fromList [updateText "" (getCurrentStyle model)]
+
+        else
+          array
 
       new_paragraph =
         Array.empty
           |> Array.append more_styles
           |> Array.append (style_text maybe_text_after)
-          |> (\x -> if Array.isEmpty x then Array.fromList [updateText "" (getCurrentStyle model)] else x)
+          |> defaultIfEmpty
 
       previous_paragraph =
         Array.empty
           |> Array.append (style_text maybe_text_before)
           |> Array.append first_styles
-          |> (\x -> if Array.isEmpty x then Array.fromList [updateText "" (getCurrentStyle model)] else x)
+          |> defaultIfEmpty
 
       updated_content =
         model.content
@@ -709,22 +655,10 @@ toggleModelStyle model toggleStyle =
           |> Array.get cursor.paragraph
 
       maybe_style =
-        case maybe_paragraph of
-          Just paragraph ->
-            paragraph
-              |> Array.get cursor.style
-
-          Nothing ->
-            Nothing
+        fromMaybe (Array.get cursor.style) maybe_paragraph
 
       text =
-        case maybe_style of
-          Just style ->
-            style
-              |> getText
-
-          Nothing ->
-            ""
+        fromMaybeWithDefault (getText) "" maybe_style
 
       left_text =
         String.left cursor.character text
@@ -737,7 +671,7 @@ toggleModelStyle model toggleStyle =
           array
 
         else
-          Array.push (current_style |> updateText string) array
+          Array.push (updateText string current_style) array
 
       new_array =
         Array.empty
@@ -752,18 +686,14 @@ toggleModelStyle model toggleStyle =
               |> Array.append (Array.slice (cursor.style+1) (Array.length paragraph) paragraph)
               |> Array.append new_array
               |> Array.append (Array.slice 0 (cursor.style) paragraph)
-              |> (\x -> Just x)
+              |> Just
 
           Nothing ->
             Nothing
 
       updated_content =
-        case maybe_updated_paragraph of
-          Just updated_paragraph ->
-            Array.set cursor.paragraph updated_paragraph model.content
-
-          Nothing ->
-            model.content
+        maybe_updated_paragraph
+          |> fromMaybeWithDefault (flip (Array.set cursor.paragraph) model.content) model.content
   in
       if String.isEmpty left_text then
         { model | content = updated_content }
@@ -804,7 +734,7 @@ showModel model =
       serialized =
         serializeContent
           (p [])
-          (\c -> text (serializeToString c))
+          (text << serializeToString)
           model.content
   in
       if debug then
