@@ -53,7 +53,7 @@ main =
 
 type alias Model =
   { content: Content
-  , cursor_position: CursorPosition
+  , cursor: CursorPosition
   , mods: Modifiers
   , input: String
   }
@@ -138,7 +138,7 @@ init = ({ content = Array.fromList
           , alt = False
           , shift = False
           }
-        , cursor_position =
+        , cursor =
           { paragraph = 0
           , style = 0
           , character = 0
@@ -240,21 +240,21 @@ keydown model key_code =
 inputToContent : String -> Model -> Model
 inputToContent input model =
     let
-        paragraph_index = model.cursor_position.paragraph
+        paragraph_index = model.cursor.paragraph
 
-        style_index = model.cursor_position.style
+        style_index = model.cursor.style
 
         maybe_updated_content =
           modifyStyleInContent model.content paragraph_index style_index (appendText input)
 
-        cursor = model.cursor_position
+        cursor = model.cursor
     in
         case maybe_updated_content of
           Just updated_content ->
             { model
                 | content = updated_content
                 , input = ""
-                , cursor_position =
+                , cursor =
                     { cursor |
                         character = cursor.character + String.length input
                     }
@@ -293,9 +293,9 @@ delete : Model -> Model
 delete model =
   let
       cursor =
-        ( model.cursor_position.paragraph
-        , model.cursor_position.style
-        , model.cursor_position.character
+        ( model.cursor.paragraph
+        , model.cursor.style
+        , model.cursor.character
         )
   in
       case cursor of
@@ -312,13 +312,13 @@ delete model =
           deleteFromStyle model
 
 
--- Should only be called when model.cursor_position.style is 0
--- AND model.cursor_position.character is 0
+-- Should only be called when model.cursor.style is 0
+-- AND model.cursor.character is 0
 mergeParagraphs : Model -> Model
 mergeParagraphs model =
   let
       paragraph_index =
-        model.cursor_position.paragraph
+        model.cursor.paragraph
 
       maybe_current_paragraph =
         Array.get paragraph_index model.content
@@ -351,7 +351,7 @@ mergeParagraphs model =
           |> fromMaybeWithDefault identity 0
 
       cursor =
-        model.cursor_position
+        model.cursor
 
       updated_cursor =
         { cursor
@@ -363,10 +363,10 @@ mergeParagraphs model =
       updateModel updated_content =
         { model
             | content = updated_content
-            , cursor_position = updated_cursor
+            , cursor = updated_cursor
         }
   in
-      if model.cursor_position.character == 0 && model.cursor_position.style == 0 then
+      if model.cursor.character == 0 && model.cursor.style == 0 then
         maybe_updated_content
           |> fromMaybeWithDefault (updateModel) model
 
@@ -428,37 +428,37 @@ getCurrentStyle model =
       maybe_current_style =
         getStyleFromContent
           model.content
-          model.cursor_position.paragraph
-          model.cursor_position.style
+          model.cursor.paragraph
+          model.cursor.style
   in
       maybe_current_style
         |> fromMaybeWithDefault (Tuple.second) (Text "")
 
 
--- Should only be called when model.cursor_position.character is 0
--- AND when model.cursor_position.style is not 0
+-- Should only be called when model.cursor.character is 0
+-- AND when model.cursor.style is not 0
 deleteFromPreviousStyle : Model -> Model
 deleteFromPreviousStyle model =
   let
-      previous_style_index = model.cursor_position.style - 1
+      previous_style_index = model.cursor.style - 1
 
       getStyleLength =
         fromMaybeWithDefault (String.length << getText << Tuple.second) 0
-          << getStyleFromContent model.content model.cursor_position.paragraph
+          << getStyleFromContent model.content model.cursor.paragraph
 
       previous_style_length =
         getStyleLength previous_style_index
 
       current_style_length =
-        getStyleLength model.cursor_position.style
+        getStyleLength model.cursor.style
 
       updated_content =
         deleteStyleFromContent
-          model.cursor_position.paragraph
-          model.cursor_position.style
+          model.cursor.paragraph
+          model.cursor.style
           model.content
 
-      cursor = model.cursor_position
+      cursor = model.cursor
 
       updated_cursor =
         { cursor
@@ -471,12 +471,12 @@ deleteFromPreviousStyle model =
           0 ->
             { model
                 | content = updated_content
-                , cursor_position = updated_cursor
+                , cursor = updated_cursor
             }
 
           _ ->
             { model
-                | cursor_position = updated_cursor
+                | cursor = updated_cursor
             }
   in
       if cursor.character == 0 && cursor.style /= 0 then
@@ -486,18 +486,18 @@ deleteFromPreviousStyle model =
         model
 
 
--- Should only be called when model.cursor_position.character is not 0
+-- Should only be called when model.cursor.character is not 0
 deleteFromStyle : Model -> Model
 deleteFromStyle model =
   let
       paragraph_index =
-        model.cursor_position.paragraph
+        model.cursor.paragraph
 
       style_index =
-        model.cursor_position.style
+        model.cursor.style
 
       character_index =
-        model.cursor_position.character
+        model.cursor.character
 
       maybe_updated_content =
         modifyStyleInContent
@@ -507,7 +507,7 @@ deleteFromStyle model =
           (deleteCharFromStyle character_index)
 
       cursor =
-        model.cursor_position
+        model.cursor
 
       updated_cursor =
         { cursor | character = character_index - 1 }
@@ -515,10 +515,10 @@ deleteFromStyle model =
       updateModel updated_content =
         { model
             | content = updated_content
-            , cursor_position = updated_cursor
+            , cursor = updated_cursor
         }
   in
-      if model.cursor_position.character == 0 then
+      if model.cursor.character == 0 then
         model
 
       else
@@ -530,25 +530,21 @@ deleteFromStyle model =
 newParagraph : Model -> Model
 newParagraph model =
   let
-      maybe_paragraph =
-        Array.get model.cursor_position.paragraph model.content
-
-      maybe_style =
-        maybe_paragraph
-          |> fromMaybe (Array.get model.cursor_position.style)
+      maybe_paragraph_and_style =
+        getStyleFromContent model.content model.cursor.paragraph model.cursor.style
 
       maybe_text =
-        maybe_style
-          |> fromMaybe (Just << getText)
+        maybe_paragraph_and_style
+          |> fromMaybe (Just << getText << Tuple.second)
 
       maybe_text_after =
         maybe_text
-          |> fromMaybe (Just << String.dropLeft model.cursor_position.character)
+          |> fromMaybe (Just << String.dropLeft model.cursor.character)
 
       maybe_text_before =
         case maybe_text of
           Just text ->
-            case String.left model.cursor_position.character text of
+            case String.left model.cursor.character text of
               "" ->
                 Nothing
 
@@ -563,19 +559,19 @@ newParagraph model =
           (curry (Array.repeat 1 << uncurry updateText))
           Array.empty
           text
-          maybe_style
+          (maybe_paragraph_and_style |> fromMaybe (Just << Tuple.second))
 
       more_styles =
-        case maybe_paragraph of
-          Just paragraph ->
-            Array.slice (model.cursor_position.style + 1) (Array.length paragraph) paragraph
+        case maybe_paragraph_and_style of
+          Just (paragraph, _) ->
+            Array.slice (model.cursor.style + 1) (Array.length paragraph) paragraph
 
           Nothing ->
             Array.empty
 
       first_styles =
-        maybe_paragraph
-          |> fromMaybeWithDefault (Array.slice 0 model.cursor_position.style) Array.empty
+        maybe_paragraph_and_style
+          |> fromMaybeWithDefault (Array.slice 0 model.cursor.style << Tuple.first) Array.empty
 
       defaultIfEmpty array =
         if Array.isEmpty array then
@@ -599,13 +595,13 @@ newParagraph model =
       updated_content =
         model.content
           |> Array.push new_paragraph
-          |> Array.set model.cursor_position.paragraph previous_paragraph
+          |> Array.set model.cursor.paragraph previous_paragraph
 
-      cursor = model.cursor_position
+      cursor = model.cursor
   in
       { model
           | content = updated_content
-          , cursor_position =
+          , cursor =
               { cursor
                   | paragraph = cursor.paragraph + 1
                   , style = 0
@@ -639,26 +635,25 @@ keyup model key_code =
 toggleModelStyle : Model -> (Style -> Style) -> Model
 toggleModelStyle model toggleStyle =
   let
-      cursor = model.cursor_position
+      cursor = model.cursor
+
+      maybe_paragraph_and_style =
+        getStyleFromContent
+          model.content
+          cursor.paragraph
+          cursor.style
 
       current_style =
-        model
-          |> getCurrentStyle
+        maybe_paragraph_and_style
+          |> fromMaybeWithDefault (Tuple.second) (Text "")
 
       new_styles =
         current_style
           |> toggleStyle
           |> (updateText "")
 
-      maybe_paragraph =
-        model.content
-          |> Array.get cursor.paragraph
-
-      maybe_style =
-        fromMaybe (Array.get cursor.style) maybe_paragraph
-
       text =
-        fromMaybeWithDefault (getText) "" maybe_style
+        getText current_style
 
       left_text =
         String.left cursor.character text
@@ -680,8 +675,8 @@ toggleModelStyle model toggleStyle =
           |> push_if_not_empty right_text
 
       maybe_updated_paragraph =
-        case maybe_paragraph of
-          Just paragraph ->
+        case maybe_paragraph_and_style of
+          Just (paragraph, _) ->
             Array.empty
               |> Array.append (Array.slice (cursor.style+1) (Array.length paragraph) paragraph)
               |> Array.append new_array
@@ -700,7 +695,7 @@ toggleModelStyle model toggleStyle =
       else
         { model
             | content = updated_content
-            , cursor_position =
+            , cursor =
                 { cursor
                     | style = cursor.style + 1
                     , character = 0
@@ -753,11 +748,11 @@ showModel model =
               ]
           , p []
               [ text "cursor position: ("
-              , text (toString model.cursor_position.paragraph)
+              , text (toString model.cursor.paragraph)
               , text ", "
-              , text (toString model.cursor_position.style)
+              , text (toString model.cursor.style)
               , text ", "
-              , text (toString model.cursor_position.character)
+              , text (toString model.cursor.character)
               , text ")"
               ]
           , p []
