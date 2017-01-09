@@ -52,8 +52,7 @@ main =
 -- MODEL
 
 type alias Model =
-  { current_content: Array (Array Content)
-  , current_styles: Content
+  { content: Content
   , cursor_position: CursorPosition
   , mods: Modifiers
   , input: String
@@ -65,6 +64,9 @@ type alias CursorPosition =
   , style: Int
   , character: Int
   }
+
+
+type alias Content = Array (Array Style)
 
 
 getArrayLast : Array a -> Maybe a
@@ -92,8 +94,27 @@ delArrayLast array =
   Array.slice 0 (Array.length array - 1) array
 
 
-serializeContentArrays : (List a -> b) -> (Content -> a) -> Array (Array Content) -> List b
-serializeContentArrays transform inner_map content_structure =
+delFromArray : Int -> Array a -> Array a
+delFromArray index array =
+  Array.append
+    (Array.slice 0 index array)
+    (Array.slice (index+1) (Array.length array) array)
+
+
+deleteStyleFromContent : Int -> Int -> Content -> Content
+deleteStyleFromContent paragraph_index style_index content =
+  case Array.get paragraph_index content of
+    Just paragraph ->
+      paragraph
+        |> delFromArray style_index
+        |> (\paragraph -> Array.set paragraph_index paragraph content)
+
+    Nothing ->
+      content
+
+
+serializeContent : (List a -> b) -> (Style -> a) -> Content -> List b
+serializeContent transform inner_map content_structure =
   let
       scl x =
         Array.map inner_map x
@@ -103,37 +124,14 @@ serializeContentArrays transform inner_map content_structure =
         |> Array.toList
 
 
-addCurrentStylesToContent : Model -> Array (Array Content)
-addCurrentStylesToContent model =
-  let
-      used_paragraph = model.current_content |> Array.get model.cursor_position.paragraph
-
-      used_style = used_paragraph |> fromMaybe (Array.get model.cursor_position.style)
-
-      new_content =
-        case used_paragraph of
-          Just content ->
-            case used_style of
-              Just style ->
-                Array.set model.cursor_position.style model.current_styles content
-
-              Nothing ->
-                Array.push model.current_styles content
-
-          Nothing ->
-            Array.fromList [model.current_styles]
-
-      updated_content =
-        setArrayLast model.current_content new_content
-  in
-        updated_content
-
-
 -- INIT
 
 init : (Model, Cmd Msg)
-init = ({ current_content = Array.empty
-        , current_styles = Text ""
+init = ({ content = Array.fromList
+                      [ Array.fromList
+                          [ Text ""
+                          ]
+                      ]
         , mods =
           { ctrl = False
           , alt = False
@@ -170,7 +168,7 @@ update msg model =
       keyup model code
 
     NewText text ->
-      (inputToCurrentStyle {model | input = text}, Cmd.none)
+      (inputToContent text model, Cmd.none)
 
 
 keydown : Model -> Int -> (Model, Cmd Msg)
@@ -238,47 +236,31 @@ keydown model key_code =
           (model, Cmd.none)
 
 
-inputToCurrentStyle : Model -> Model
-inputToCurrentStyle model =
+inputToContent : String -> Model -> Model
+inputToContent input model =
     let
-        updated_style = appendText model.input model.current_styles
+        paragraph_index = model.cursor_position.paragraph
+
+        style_index = model.cursor_position.style
+
+        maybe_updated_content =
+          modifyStyleInContent model.content paragraph_index style_index (appendText input)
 
         cursor = model.cursor_position
     in
-        { model
-            | current_styles = updated_style
-            , input = ""
-            , cursor_position =
-                { cursor |
-                    character = cursor.character + 1
-                }
-        }
+        case maybe_updated_content of
+          Just updated_content ->
+            { model
+                | content = updated_content
+                , input = ""
+                , cursor_position =
+                    { cursor |
+                        character = cursor.character + String.length input
+                    }
+            }
 
-
-inputFromCurrentStyle : Model -> Model
-inputFromCurrentStyle model =
-    let
-        text = getString model.current_styles
-
-        split_point = String.length text - 1
-
-        updated_style =
-          text
-            |> String.left split_point
-            |> (\x -> updateText x model.current_styles)
-
-        last_char = String.right split_point text
-
-        cursor = model.cursor_position
-    in
-        { model
-            | current_styles = updated_style
-            , input = last_char
-            , cursor_position =
-                { cursor |
-                    character = cursor.character - 1
-                }
-        }
+          Nothing ->
+            model
 
 
 fromMaybe : (a -> Maybe b) -> Maybe a -> Maybe b
@@ -294,39 +276,102 @@ fromMaybe fn item =
 delete : Model -> Model
 delete model =
   let
-      setContentLast =
-        setArrayLast model.current_content
-
-      justRemoveNestedLast x =
-        Just (x |> delArrayLast |> setContentLast)
-
-      last_style =
-        model.current_content
-          |> getArrayLast
-          |> fromMaybe (getArrayLast)
-
-      content_without_last_style =
-        model.current_content
-          |> getArrayLast
-          |> fromMaybe (justRemoveNestedLast)
+      cursor =
+        ( model.cursor_position.paragraph
+        , model.cursor_position.style
+        , model.cursor_position.character
+        )
   in
-      if Styles.isEmpty model.current_styles then
-        case content_without_last_style of
-          Just content ->
-            case last_style of
-              Just style ->
-                { model
-                    | current_styles = style
-                    , current_content = content
-                }
+      case cursor of
+        (0, 0, 0) -> -- paragraph, style, and character are 0
+          model
+
+        (_, 0, 0) -> -- style and character are 0, paragraph is not 0
+          mergeParagraphs model
+
+        (_, _, 0) -> -- character is 0, style is not 0, paragraph is anything
+          deleteFromPreviousStyle model
+
+        _ -> -- character is not 0, style and paragraph are anything
+          deleteFromStyle model
+
+
+-- Should only be called when model.cursor_position.style is 0
+-- AND model.cursor_position.character is 0
+mergeParagraphs : Model -> Model
+mergeParagraphs model =
+  let
+      paragraph_index =
+        model.cursor_position.paragraph
+
+      current_paragraph =
+        Array.get paragraph_index model.content
+
+      previous_paragraph =
+        Array.get (paragraph_index - 1) model.content
+
+      maybe_merged_paragraphs =
+        case current_paragraph of
+          Just c_paragraph ->
+            case previous_paragraph of
+              Just p_paragraph ->
+                Just (Array.append p_paragraph c_paragraph)
 
               Nothing ->
-                { model
-                    | current_content =
-                        model.current_content
-                        |> delArrayLast
-                }
-                |> delete
+                Nothing
+
+          Nothing ->
+            Nothing
+
+      maybe_updated_content =
+        case maybe_merged_paragraphs of
+          Just merged_paragraphs ->
+            model.content
+              |> Array.set (paragraph_index - 1) merged_paragraphs
+              |> delFromArray paragraph_index
+              |> (\x -> Just x)
+
+          Nothing ->
+            Nothing
+
+      style_index = 
+        case previous_paragraph of
+          Just p_paragraph ->
+            Array.length p_paragraph - 1
+
+          Nothing ->
+            0
+
+      character_index =
+        case previous_paragraph of
+          Just p_paragraph ->
+            case Array.get style_index p_paragraph of
+              Just style ->
+                String.length (getText style)
+
+              Nothing ->
+                0
+
+          Nothing ->
+            0
+
+      cursor =
+        model.cursor_position
+
+      updated_cursor =
+        { cursor
+            | paragraph = cursor.paragraph - 1
+            , style = style_index
+            , character = character_index
+        }
+  in
+      if model.cursor_position.character == 0 && model.cursor_position.style == 0 then
+        case maybe_updated_content of
+          Just updated_content ->
+            { model
+                | content = updated_content
+                , cursor_position = updated_cursor
+            }
 
           Nothing ->
             model
@@ -335,18 +380,285 @@ delete model =
         model
 
 
+getStyleFromContent : Content -> Int -> Int -> Maybe Style
+getStyleFromContent content paragraph_index style_index =
+  let
+      maybe_paragraph =
+        Array.get paragraph_index content
+
+      maybe_style =
+        maybe_paragraph
+          |> fromMaybe (Array.get style_index)
+  in
+      maybe_style
+
+
+setStyleInContent : Content -> Int -> Int -> Style -> Content
+setStyleInContent content paragraph_index style_index updated_style =
+  let
+      maybe_paragraph =
+        Array.get paragraph_index content
+
+      maybe_updated_paragraph =
+        case maybe_paragraph of
+          Just paragraph ->
+            Just (Array.set style_index updated_style paragraph)
+
+          Nothing ->
+            Nothing
+  in
+      case maybe_updated_paragraph of
+        Just updated_paragraph ->
+          Array.set paragraph_index updated_paragraph content
+
+        Nothing ->
+          content
+
+
+modifyStyleInContent : Content -> Int -> Int -> (Style -> Style) -> Maybe (Content)
+modifyStyleInContent content paragraph_index style_index fn =
+  getStyleFromContent content paragraph_index style_index
+    |> fromMaybe (\style -> Just (fn style))
+    |> fromMaybe (\style -> Just (setStyleInContent content paragraph_index style_index style))
+
+
+deleteCharFromString : Int -> String -> String
+deleteCharFromString index str =
+  String.left (index - 1) str ++ (String.dropLeft index str)
+
+
+deleteCharFromStyle : Int -> Style -> Style
+deleteCharFromStyle index style =
+  style
+    |> getText
+    |> deleteCharFromString index
+    |> (\text -> updateText text style)
+
+
+getCurrentStyle : Model -> Style
+getCurrentStyle model =
+  let
+      maybe_current_style =
+        getStyleFromContent
+          model.content
+          model.cursor_position.paragraph
+          model.cursor_position.style
+  in
+      case maybe_current_style of
+        Just current_style ->
+          current_style
+
+        Nothing ->
+          Text ""
+
+
+-- Should only be called when model.cursor_position.character is 0
+-- AND when model.cursor_position.style is not 0
+deleteFromPreviousStyle : Model -> Model
+deleteFromPreviousStyle model =
+  let
+      paragraph_index = model.cursor_position.paragraph
+
+      previous_style_index = model.cursor_position.style - 1
+
+      maybeGetStyleTextLength style =
+        style
+          |> getText
+          |> String.length
+          |> (\x -> Just x)
+
+      maybe_previous_style_length =
+        (getStyleFromContent
+          model.content
+          paragraph_index
+          previous_style_index)
+            |> fromMaybe (maybeGetStyleTextLength)
+
+      maybe_current_style_length =
+        (getStyleFromContent
+          model.content
+          model.cursor_position.paragraph
+          model.cursor_position.style)
+            |> fromMaybe (maybeGetStyleTextLength)
+
+
+      previous_style_length =
+        case maybe_previous_style_length of
+          Just length ->
+            length
+
+          Nothing ->
+            0
+
+      updated_content =
+        deleteStyleFromContent
+          model.cursor_position.paragraph
+          model.cursor_position.style
+          model.content
+
+      cursor = model.cursor_position
+
+      updated_cursor =
+        { cursor
+            | style = previous_style_index
+            , character = previous_style_length
+        }
+
+      updated_model =
+        case maybe_current_style_length of
+          Just 0 ->
+            { model
+                | content = updated_content
+                , cursor_position = updated_cursor
+            }
+
+          _ ->
+            { model
+                | cursor_position = updated_cursor
+            }
+  in
+      if cursor.character == 0 && cursor.style /= 0 then
+        deleteFromStyle updated_model
+
+      else
+        model
+
+
+-- Should only be called when model.cursor_position.character is not 0
+deleteFromStyle : Model -> Model
+deleteFromStyle model =
+  let
+      paragraph_index =
+        model.cursor_position.paragraph
+
+      style_index =
+        model.cursor_position.style
+
+      character_index =
+        model.cursor_position.character
+
+      maybe_updated_content =
+        modifyStyleInContent
+          model.content
+          paragraph_index
+          style_index
+          (deleteCharFromStyle character_index)
+
+      cursor =
+        model.cursor_position
+
+      updated_cursor =
+        { cursor | character = character_index - 1 }
+  in
+      if model.cursor_position.character == 0 then
+        model
+
+      else
+        case maybe_updated_content of
+          Just content ->
+            { model
+                | content = content
+                , cursor_position = updated_cursor
+            }
+
+          Nothing ->
+            model
+
+
+
 newParagraph : Model -> Model
 newParagraph model =
   let
-      updated_content = addCurrentStylesToContent model
+      maybe_paragraph =
+        Array.get model.cursor_position.paragraph model.content
 
-      updated_styles = updateText "" model.current_styles
+      maybe_style =
+        case maybe_paragraph of
+          Just paragraph ->
+            Array.get model.cursor_position.style paragraph
+
+          Nothing ->
+            Nothing
+
+      maybe_text =
+        case maybe_style of
+          Just style ->
+            Just (getText style)
+
+          Nothing ->
+            Nothing
+
+      maybe_text_after =
+        case maybe_text of
+          Just text ->
+            Just (String.dropLeft model.cursor_position.character text)
+
+          Nothing ->
+            Nothing
+
+      maybe_text_before =
+        case maybe_text of
+          Just text ->
+            case String.left model.cursor_position.character text of
+              "" ->
+                Nothing
+
+              text ->
+                Just text
+
+          Nothing ->
+            Nothing
+
+      style_text x =
+        case x of
+          Just text ->
+            case maybe_style of
+              Just style ->
+                Array.empty |> Array.push (updateText text style)
+
+              Nothing ->
+                Array.empty
+
+          Nothing ->
+            Array.empty
+
+      more_styles =
+        case maybe_paragraph of
+          Just paragraph ->
+            Array.slice (model.cursor_position.style + 1) (Array.length paragraph) paragraph
+
+          Nothing ->
+            Array.empty
+
+      first_styles =
+        case maybe_paragraph of
+          Just paragraph ->
+            Array.slice 0 model.cursor_position.style paragraph
+
+          Nothing ->
+            Array.empty
+
+      new_paragraph =
+        Array.empty
+          |> Array.append more_styles
+          |> Array.append (style_text maybe_text_after)
+          |> (\x -> if Array.isEmpty x then Array.fromList [updateText "" (getCurrentStyle model)] else x)
+
+      previous_paragraph =
+        Array.empty
+          |> Array.append (style_text maybe_text_before)
+          |> Array.append first_styles
+          |> (\x -> if Array.isEmpty x then Array.fromList [updateText "" (getCurrentStyle model)] else x)
+
+      updated_content =
+        model.content
+          |> Array.push new_paragraph
+          |> Array.set model.cursor_position.paragraph previous_paragraph
 
       cursor = model.cursor_position
   in
       { model
-          | current_styles = updated_styles
-          , current_content = Array.push Array.empty updated_content
+          | content = updated_content
           , cursor_position =
               { cursor
                   | paragraph = cursor.paragraph + 1
@@ -378,23 +690,86 @@ keyup model key_code =
           (model, Cmd.none)
 
 
-toggleModelStyle : Model -> (Content -> Content) -> Model
+toggleModelStyle : Model -> (Style -> Style) -> Model
 toggleModelStyle model toggleStyle =
   let
-      empty = Styles.isEmpty model.current_styles
-
-      new_styles = model.current_styles |> toggleStyle |> (updateText "")
-
-      updated_content = addCurrentStylesToContent model
-
       cursor = model.cursor_position
+
+      current_style =
+        model
+          |> getCurrentStyle
+
+      new_styles =
+        current_style
+          |> toggleStyle
+          |> (updateText "")
+
+      maybe_paragraph =
+        model.content
+          |> Array.get cursor.paragraph
+
+      maybe_style =
+        case maybe_paragraph of
+          Just paragraph ->
+            paragraph
+              |> Array.get cursor.style
+
+          Nothing ->
+            Nothing
+
+      text =
+        case maybe_style of
+          Just style ->
+            style
+              |> getText
+
+          Nothing ->
+            ""
+
+      left_text =
+        String.left cursor.character text
+
+      right_text =
+        String.dropLeft cursor.character text
+
+      push_if_not_empty string array =
+        if String.isEmpty string then
+          array
+
+        else
+          Array.push (current_style |> updateText string) array
+
+      new_array =
+        Array.empty
+          |> push_if_not_empty left_text
+          |> Array.push new_styles
+          |> push_if_not_empty right_text
+
+      maybe_updated_paragraph =
+        case maybe_paragraph of
+          Just paragraph ->
+            Array.empty
+              |> Array.append (Array.slice (cursor.style+1) (Array.length paragraph) paragraph)
+              |> Array.append new_array
+              |> Array.append (Array.slice 0 (cursor.style) paragraph)
+              |> (\x -> Just x)
+
+          Nothing ->
+            Nothing
+
+      updated_content =
+        case maybe_updated_paragraph of
+          Just updated_paragraph ->
+            Array.set cursor.paragraph updated_paragraph model.content
+
+          Nothing ->
+            model.content
   in
-      if empty then
-        { model | current_styles = toggleStyle model.current_styles }
+      if String.isEmpty left_text then
+        { model | content = updated_content }
       else
         { model
-            | current_content = updated_content
-            , current_styles = new_styles
+            | content = updated_content
             , cursor_position =
                 { cursor
                     | style = cursor.style + 1
@@ -409,10 +784,10 @@ view : Model -> Html Msg
 view model =
   let
       serialized =
-        serializeContentArrays
+        serializeContent
           (p [])
           (renderStyle)
-          (addCurrentStylesToContent model)
+          (model.content)
   in
       div []
         [ div []
@@ -427,10 +802,10 @@ showModel : Model -> Html Msg
 showModel model =
   let
       serialized =
-        serializeContentArrays
+        serializeContent
           (p [])
           (\c -> text (serializeToString c))
-          model.current_content
+          model.content
   in
       if debug then
         div [ class "debug" ]
@@ -454,10 +829,6 @@ showModel model =
               , text ", "
               , text (toString model.cursor_position.character)
               , text ")"
-              ]
-          , p []
-              [ text "styles on input: "
-              , text (serializeToString model.current_styles)
               ]
           , p []
               [ text "input text: "
