@@ -70,31 +70,6 @@ type alias Paragraph = Array Style
 type alias Content = Array Paragraph
 
 
-getArrayLast : Array a -> Maybe a
-getArrayLast array =
-  case Array.length array of
-    0 ->
-      Nothing
-
-    length ->
-      Array.get (length - 1) array
-
-
-setArrayLast : Array a -> a -> Array a
-setArrayLast array item =
-  case Array.length array of
-    0 ->
-      Array.empty |> Array.push item
-
-    length ->
-      Array.set (length-1) item array
-
-
-delArrayLast : Array a -> Array a
-delArrayLast array =
-  Array.slice 0 (Array.length array - 1) array
-
-
 delFromArray : Int -> Array a -> Array a
 delFromArray index array =
   Array.append
