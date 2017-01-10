@@ -348,7 +348,7 @@ mergeParagraphs model =
             , cursor = updated_cursor
         }
   in
-      if model.cursor.character == 0 && model.cursor.style == 0 then
+      if cursor.character == 0 && cursor.style == 0 then
         maybe_updated_content
           |> fromMaybeWithDefault (updateModel) model
 
@@ -507,7 +507,7 @@ deleteFromStyle model =
             , cursor = updated_cursor
         }
   in
-      if model.cursor.character == 0 then
+      if cursor.character == 0 then
         model
 
       else
@@ -739,6 +739,9 @@ view model =
 showModel : Model -> Html Msg
 showModel model =
   let
+      cursor : CursorPosition
+      cursor = model.cursor
+
       serialized : List (Html Msg)
       serialized =
         serializeContent
@@ -762,11 +765,11 @@ showModel model =
               ]
           , p []
               [ text "cursor position: ("
-              , text (toString model.cursor.paragraph)
+              , text (toString cursor.paragraph)
               , text ", "
-              , text (toString model.cursor.style)
+              , text (toString cursor.style)
               , text ", "
-              , text (toString model.cursor.character)
+              , text (toString cursor.character)
               , text ")"
               ]
           , p []
