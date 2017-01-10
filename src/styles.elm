@@ -15,16 +15,16 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Styles exposing
-    (Content(..), setLinkHref, updateText, appendText, toggleCode, toggleImage,
+    (Style(..), setLinkHref, updateText, appendText, toggleCode, toggleImage,
     toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
-    toggleLink, serializeToString, renderStyle, isEmpty, getString)
+    toggleLink, serializeToString, renderStyle, isEmpty, getText)
 
 {-|
-@docs Content
+@docs Style
 
 @docs setLinkHref, updateText, appendText, toggleCode, toggleImage, toggleStrike
 @docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
-@docs serializeToString, renderStyle, isEmpty, getString
+@docs serializeToString, renderStyle, isEmpty, getText
 -}
 
 import Html exposing (..)
@@ -34,16 +34,16 @@ import String
 
 {-| Internal representation of Styled Text.
 -}
-type Content
+type Style
   = Text String
   | Image String
   | Code String
-  | Heading Content
-  | Link String Content
-  | Bold Content
-  | Italic Content
-  | Underline Content
-  | Strike Content
+  | Heading Style
+  | Link String Style
+  | Bold Style
+  | Italic Style
+  | Underline Style
+  | Strike Style
 
 
 {-| Set the URL of a link in a content chain
@@ -57,7 +57,7 @@ examples:
   Link "https://yahoo.com" (Bold (Text "hi, hello"))
 
 -}
-appendText : String -> Content -> Content
+appendText : String -> Style -> Style
 appendText text content =
   case content of
     Text str ->
@@ -99,7 +99,7 @@ examples:
   Link "https://yahoo.com" (Bold (Text "hello"))
 
 -}
-updateText : String -> Content -> Content
+updateText : String -> Style -> Style
 updateText text content =
   case content of
     Text _ ->
@@ -141,7 +141,7 @@ examples:
   Link "https://google.com" (Bold (Text "hi"))
 
 -}
-setLinkHref : String -> Content -> Content
+setLinkHref : String -> Style -> Style
 setLinkHref href content =
   case content of
     Text str ->
@@ -193,7 +193,7 @@ examples:
   Text "hello world"
 
 -}
-toggleLink : String -> Content -> Content
+toggleLink : String -> Style -> Style
 toggleLink href current_content =
   case current_content of
     Text str ->
@@ -240,7 +240,7 @@ examples:
   Link "https://google.com" (Text "hello world")
 
 -}
-toggleHeading : Content -> Content
+toggleHeading : Style -> Style
 toggleHeading current_content =
   case current_content of
     Text str ->
@@ -287,7 +287,7 @@ examples:
   Link "https://google.com" (Bold (Italic (Text "hello world")))
 
 -}
-toggleBold : Content -> Content
+toggleBold : Style -> Style
 toggleBold current_content =
   case current_content of
     Text str ->
@@ -331,7 +331,7 @@ examples:
   Bold (Text "hello world")
 
 -}
-toggleItalic : Content -> Content
+toggleItalic : Style -> Style
 toggleItalic current_content =
   case current_content of
     Text str ->
@@ -375,7 +375,7 @@ examples:
   Bold (Text "hello world")
 
 -}
-toggleUnderline : Content -> Content
+toggleUnderline : Style -> Style
 toggleUnderline current_content =
   case current_content of
     Text str ->
@@ -422,7 +422,7 @@ examples:
   Link "https://google.com" (Bold (Strike (Text "hello world")))
 
 -}
-toggleStrike : Content -> Content
+toggleStrike : Style -> Style
 toggleStrike current_content =
   case current_content of
     Text str ->
@@ -467,7 +467,7 @@ examples:
   Link "https://google.com" (Image "https://google.com/google.png"
 
 -}
-toggleImage : Content -> Content
+toggleImage : Style -> Style
 toggleImage current_content =
   case current_content of
     Text str ->
@@ -512,7 +512,7 @@ examples:
   Link "https://google.com" (Code "hello world")
 
 -}
-toggleCode : Content -> Content
+toggleCode : Style -> Style
 toggleCode current_content =
   case current_content of
     Text str ->
@@ -547,7 +547,7 @@ toggleCode current_content =
 
 This is for debugging use only
 -}
-serializeToString : Content -> String
+serializeToString : Style -> String
 serializeToString content =
   case content of
     Text str ->
@@ -578,7 +578,7 @@ serializeToString content =
       "(Strike " ++ (serializeToString content) ++ ")"
 
 
-{-| Converts a Content into HTML elements
+{-| Converts a Style into HTML elements
 
 Dom Nodes galore.
 
@@ -604,7 +604,7 @@ examples:
         ]
     ]
 -}
-renderStyle : Content -> Html msg
+renderStyle : Style -> Html msg
 renderStyle current_content =
   case current_content of
     Text str ->
@@ -649,7 +649,7 @@ examples:
   False
 
 -}
-isEmpty : Content -> Bool
+isEmpty : Style -> Bool
 isEmpty current_content =
   case current_content of
     Text str ->
@@ -680,10 +680,10 @@ isEmpty current_content =
       isEmpty content
 
 
-{-| getString returns the string from inside the content
+{-| getText returns the string from inside the content
 -}
-getString : Content -> String
-getString current_content =
+getText : Style -> String
+getText current_content =
   case current_content of
     Text str ->
       str
@@ -695,19 +695,19 @@ getString current_content =
       str
 
     Link _ content ->
-      getString content
+      getText content
 
     Heading content ->
-      getString content
+      getText content
 
     Bold content ->
-      getString content
+      getText content
 
     Italic content ->
-      getString content
+      getText content
 
     Underline content ->
-      getString content
+      getText content
 
     Strike content ->
-      getString content
+      getText content

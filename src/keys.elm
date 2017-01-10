@@ -35,6 +35,10 @@ type KeyCmd
   | Ctrl
   | Alt
   | Shift
+  | Left
+  | Up
+  | Right
+  | Down
   | NewLine
   | NewParagraph
   | ToggleCode
@@ -114,6 +118,18 @@ handleToggles modifiers key_code =
     case key_code of
       13 -> -- Enter
         Just (if modifiers.shift then NewLine else NewParagraph)
+
+      37 ->
+        Just Left
+
+      38 ->
+        Just Up
+
+      39 ->
+        Just Right
+
+      40 ->
+        Just Down
 
       _ ->
         Nothing
