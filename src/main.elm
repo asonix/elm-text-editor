@@ -292,7 +292,7 @@ findGreaterCharCount count style (char_count, index) =
         (current_count, index + 1)
 
       else
-        (current_count, index)
+        (char_count, index)
 
 
 moveVertical : Int -> Model -> Model
@@ -356,7 +356,7 @@ moveVertical distance model =
             { cursor
                 | paragraph = cursor.paragraph + distance
                 , style = previous_style_index + 1
-                , character = previous_char_count + (String.length (getText new_style)) - char_count
+                , character = char_count - previous_char_count
             }
 
           (Nothing, Just previous_style) ->
