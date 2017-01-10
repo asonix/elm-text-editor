@@ -251,8 +251,7 @@ fromMaybeWithDefault fn default maybe_item =
 
 
 fromTwoMaybes : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
-fromTwoMaybes fn maybe_one maybe_two =
-  fromTwoMaybesWithDefault fn Nothing maybe_one maybe_two
+fromTwoMaybes fn = fromTwoMaybesWithDefault fn Nothing
 
 
 fromTwoMaybesWithDefault : (a -> b -> c) -> c -> Maybe a -> Maybe b -> c
