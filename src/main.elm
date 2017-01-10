@@ -32,6 +32,7 @@ import Array exposing (..)
 import Keyboard
 import Debug
 
+
 -- MAIN
 
 debug : Bool
@@ -248,9 +249,11 @@ fromMaybeWithDefault fn default maybe_item =
     Nothing ->
       default
 
+
 fromTwoMaybes : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
 fromTwoMaybes fn maybe_one maybe_two =
   fromTwoMaybesWithDefault fn Nothing maybe_one maybe_two
+
 
 fromTwoMaybesWithDefault : (a -> b -> c) -> c -> Maybe a -> Maybe b -> c
 fromTwoMaybesWithDefault fn default maybe_one maybe_two =
@@ -462,7 +465,6 @@ deleteFromStyle model =
           cursor.style
           (deleteCharFromStyle cursor.character))
           |> fromMaybeWithDefault (updateModel) model
-
 
 
 newParagraph : Model -> Model
