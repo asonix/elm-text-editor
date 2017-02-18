@@ -26,6 +26,7 @@ module Styles exposing
 @docs setLinkHref, setText, appendText, toggleCode, toggleImage, toggleStrike
 @docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
 @docs serializeToString, renderStyle, isEmpty, getText, setMouseoverText
+@docs toggleText
 -}
 
 import Html exposing (..)
@@ -33,12 +34,8 @@ import Html.Attributes exposing (..)
 import String
 
 
-{-| Internal representation of Styled Text.
--}
-
-type StyleAttributes
-  = StyleAttributes
-    { heading : Bool
+type alias StyleAttributes
+  = { heading : Bool
     , bold : Bool
     , italic : Bool
     , underline : Bool
@@ -51,25 +48,26 @@ type StyleType
   | Image (Maybe String) -- Image with mouseover text
 
 type LinkWrapper
-  = Just StyleType
+  = Only StyleType
   | Link String StyleType
 
+{-| Internal representation of Styled Text.
+-}
 type Style
   = Style
-    { style_type : LinkWrapper
+    { link_wrapper : LinkWrapper
     , text : String
     }
 
 
 defaultAttributes : StyleAttributes
 defaultAttributes =
-  StyleAttributes
-    { heading = False
-    , bold = False
-    , italic = False
-    , underline = False
-    , strike = False
-    }
+  { heading = False
+  , bold = False
+  , italic = False
+  , underline = False
+  , strike = False
+  }
 
 
 {-| Set the URL of a link in a content chain
@@ -81,8 +79,11 @@ examples:
 
 -}
 appendText : String -> Style -> Style
-appendText text (Style { link_wrapper, styled_text } =
-  Style { link_wrapper, styled_text ++ text }
+appendText new_text (Style { link_wrapper, text }) =
+  Style
+    { link_wrapper = link_wrapper
+    , text = text ++ new_text
+    }
 
 
 {-| Set the URL of a link in a content chain
@@ -94,8 +95,11 @@ examples:
 
 -}
 setText : String -> Style -> Style
-setText text (Style { link_wrapper, _ } =
-  Style { link_wrapper, text }
+setText text (Style { link_wrapper }) =
+  Style
+    { link_wrapper = link_wrapper
+    , text = text
+    }
 
 
 {-| getText returns the string from inside the content
@@ -107,7 +111,8 @@ examples:
 
 -}
 getText : Style -> String
-getText (Style { _, text }) = text
+getText (Style { text }) =
+  text
 
 
 {-| Determines whether there is any text in the content
@@ -122,28 +127,35 @@ examples:
 
 -}
 isEmpty : Style -> Bool
-isEmpty (Style { _, text }) = String.isEmpty text
+isEmpty (Style { text }) =
+  String.isEmpty text
 
 
 {-| Set the URL of a link in a content chain
 
 examples:
 
-  > setLinkHref "https://google.com" (Style {Just _, "hello"})
-  Style {Just _, "hello"}
+  > setLinkHref "https://google.com" (Style {Only _, "hello"})
+  Style {Only _, "hello"}
 
   > setLinkHref "https://google.com" (Style {Link "https://yahoo.com" _, "hello"})
   Style {Link "https://google.com" _, "hello"}
 
 -}
 setLinkHref : String -> Style -> Style
-setLinkHref href (Style { link_wrapper, text } =
+setLinkHref href (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just _ ->
-      Style { link_wrapper, text }
+    Only _ ->
+      Style
+        { link_wrapper = link_wrapper
+        , text = text
+        }
 
     Link _ style_type ->
-      Style { Link href style_type, text }
+      Style
+        { link_wrapper = Link href style_type
+        , text = text
+        }
 
 
 {-| Links can be applied to any type of content.
@@ -160,11 +172,17 @@ examples:
 toggleLink : String -> Style -> Style
 toggleLink href (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just style_type ->
-      Style { Link href style_type, text }
+    Only style_type ->
+      Style
+        { link_wrapper = Link href style_type
+        , text = text
+        }
 
     Link _ style_type ->
-      Style { Just style_type, text }
+      Style
+        { link_wrapper = Only style_type
+        , text = text
+        }
 
 
 setMouseoverTextOfStyleType : String -> StyleType -> StyleType
@@ -181,20 +199,26 @@ setMouseoverTextOfStyleType string style_type =
 
 examples:
 
-  > setMouseoverText "A cute catte" (Style { Just (Image Nothing), "https://catte.com/cat.png" })
-  Style { Just (Image (Just "A cute catte")), "https://catte.com/cat.png" })
+  > setMouseoverText "A cute catte" (Style { Only (Image Nothing), "https://catte.com/cat.png" })
+  Style { Only (Image (Just "A cute catte")), "https://catte.com/cat.png" })
 
-  > setMouseoverText "some text" (Style { Just Code, "Enum.map/2" })
-  Style { Just Code, "Enum.map/2" }
+  > setMouseoverText "some text" (Style { Only Code, "Enum.map/2" })
+  Style { Only Code, "Enum.map/2" }
 -}
 setMouseoverText : String -> Style -> Style
 setMouseoverText string (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just style_type ->
-      Just (setMouseoverTextOfStyleType string style_type)
+    Only style_type ->
+      Style
+        { link_wrapper = Only (setMouseoverTextOfStyleType string style_type)
+        , text = text
+        }
 
     Link href style_type ->
-      Link href (setMouseoverTextOfStyleType string style_type)
+      Style
+        { link_wrapper = Link href (setMouseoverTextOfStyleType string style_type)
+        , text = text
+        }
 
 
 {-| These next functions are for toggling StyleAttributes.
@@ -229,7 +253,7 @@ toggleStrikeAttribute style_attributes =
 
 {- Attributes can only be toggled for Text
 -}
-toggleAttribute (StyleAttributes -> StyleAttributes) -> StyleType -> StyleType
+toggleAttribute : (StyleAttributes -> StyleAttributes) -> StyleType -> StyleType
 toggleAttribute fn style_type =
   case style_type of
     Text style_attributes ->
@@ -242,28 +266,34 @@ toggleAttribute fn style_type =
 toggleAttributeFromStyle : (StyleAttributes -> StyleAttributes) -> Style -> Style
 toggleAttributeFromStyle fn (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just style_type ->
-      Style { Just (toggleAttribute fn style_type), text }
+    Only style_type ->
+      Style
+        { link_wrapper = Only (toggleAttribute fn style_type)
+        , text = text
+        }
 
     Link href style_type ->
-      Style { Link href (toggleAttribute fn style_type), text }
+      Style
+        { link_wrapper =  Link href (toggleAttribute fn style_type)
+        , text = text
+        }
 
 
 {-| Headings cannot be applied to Code or Image.
 
 examples:
 
-  > toggleHeading (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Text {False, True, True, True, True}), "Hello World" }
+  > toggleHeading (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Text {False, True, True, True, True}), "Hello World" }
 
-  > toggleHeading (Style { Just (Text {False, True, True, True, True}), "Hello World" })
-  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+  > toggleHeading (Style { Only (Text {False, True, True, True, True}), "Hello World" })
+  Style { Only (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleHeading (Style { Just Code, "Hello World" })
-  Style { Just Code, "Hello World" }
+  > toggleHeading (Style { Only Code, "Hello World" })
+  Style { Only Code, "Hello World" }
 
-  > toggleHeading (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Image Nothing), "https://google.com/google.png" }
+  > toggleHeading (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleHeading : Style -> Style
@@ -275,17 +305,17 @@ toggleHeading =
 
 examples:
 
-  > toggleBold (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Text {True, False, True, True, True}), "Hello World" }
+  > toggleBold (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Text {True, False, True, True, True}), "Hello World" }
 
-  > toggleBold (Style { Just (Text {True, False, True, True, True}), "Hello World" })
-  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+  > toggleBold (Style { Only (Text {True, False, True, True, True}), "Hello World" })
+  Style { Only (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleBold (Style { Just Code, "Hello World" })
-  Style { Just Code, "Hello World" }
+  > toggleBold (Style { Only Code, "Hello World" })
+  Style { Only Code, "Hello World" }
 
-  > toggleBold (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Image Nothing), "https://google.com/google.png" }
+  > toggleBold (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleBold : Style -> Style
@@ -297,17 +327,17 @@ toggleBold =
 
 examples:
 
-  > toggleItalic (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Text {True, True, False, True, True}), "Hello World" }
+  > toggleItalic (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Text {True, True, False, True, True}), "Hello World" }
 
-  > toggleItalic (Style { Just (Text {True, True, False, True, True}), "Hello World" })
-  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+  > toggleItalic (Style { Only (Text {True, True, False, True, True}), "Hello World" })
+  Style { Only (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleItalic (Style { Just Code, "Hello World" })
-  Style { Just Code, "Hello World" }
+  > toggleItalic (Style { Only Code, "Hello World" })
+  Style { Only Code, "Hello World" }
 
-  > toggleItalic (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Image Nothing), "https://google.com/google.png" }
+  > toggleItalic (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleItalic : Style -> Style
@@ -319,17 +349,17 @@ toggleItalic =
 
 examples:
 
-  > toggleUnderline (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Text {True, True, True, False, True}), "Hello World" }
+  > toggleUnderline (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Text {True, True, True, False, True}), "Hello World" }
 
-  > toggleUnderline (Style { Just (Text {True, True, True, False, True}), "Hello World" })
-  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+  > toggleUnderline (Style { Only (Text {True, True, True, False, True}), "Hello World" })
+  Style { Only (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleUnderline (Style { Just Code, "Hello World" })
-  Style { Just Code, "Hello World" }
+  > toggleUnderline (Style { Only Code, "Hello World" })
+  Style { Only Code, "Hello World" }
 
-  > toggleUnderline (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Image Nothing), "https://google.com/google.png" }
+  > toggleUnderline (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleUnderline : Style -> Style
@@ -341,17 +371,17 @@ toggleUnderline =
 
 examples:
 
-  > toggleStrike (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Text {True, True, True, True, False}), "Hello World" }
+  > toggleStrike (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Text {True, True, True, True, False}), "Hello World" }
 
-  > toggleStrike (Style { Just (Text {True, True, True, True, False}), "Hello World" })
-  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+  > toggleStrike (Style { Only (Text {True, True, True, True, False}), "Hello World" })
+  Style { Only (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleStrike (Style { Just Code, "Hello World" })
-  Style { Just Code, "Hello World" }
+  > toggleStrike (Style { Only Code, "Hello World" })
+  Style { Only Code, "Hello World" }
 
-  > toggleStrike (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Image Nothing), "https://google.com/google.png" }
+  > toggleStrike (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleStrike : Style -> Style
@@ -392,27 +422,33 @@ toggleTextFromStyleType style_type =
 
 
 toggleStyleTypeFromStyle : (StyleType -> StyleType) -> Style -> Style
-toggleStyleTypeFromStyle fn Style { link_wrapper, text } =
+toggleStyleTypeFromStyle fn (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just style_type ->
-      Style { Just (fn style_type), text }
+    Only style_type ->
+      Style
+        { link_wrapper = Only (fn style_type)
+        , text = text
+        }
 
     Link href style_type ->
-      Style { Link href (fn style_type), text }
+      Style
+        { link_wrapper = Link href (fn style_type)
+        , text = text
+        }
 
 
 {-| toggleImage removes styling (except link) and converts the remaining Text to an Image
 
 examples:
 
-  > toggleImage (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Image Nothing), "Hello World" }
+  > toggleImage (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Image Nothing), "Hello World" }
 
-  > toggleImage (Style { Just Code, "Hello World" })
-  Style { Just (Image Nothing), "Hello World" }
+  > toggleImage (Style { Only Code, "Hello World" })
+  Style { Only (Image Nothing), "Hello World" }
 
-  > toggleImage (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Text {False, False, False, False, False}), "https://google.com/google.png" }
+  > toggleImage (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Text {False, False, False, False, False}), "https://google.com/google.png" }
 
 -}
 toggleImage : Style -> Style
@@ -424,14 +460,14 @@ toggleImage =
 
 examples:
 
-  > toggleCode (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just Code, "Hello World" }
+  > toggleCode (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only Code, "Hello World" }
 
-  > toggleCode (Style { Just Code, "Hello World" })
-  Style { Just (Text {False, False, False, False, False}), "Hello World" }
+  > toggleCode (Style { Only Code, "Hello World" })
+  Style { Only (Text {False, False, False, False, False}), "Hello World" }
 
-  > toggleCode (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just Code, "https://google.com/google.png" }
+  > toggleCode (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only Code, "https://google.com/google.png" }
 
 -}
 toggleCode : Style -> Style
@@ -443,14 +479,14 @@ toggleCode =
 
 examples:
 
-  > toggleText (Style { Just (Text {True, True, True, True, True}), "Hello World" })
-  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+  > toggleText (Style { Only (Text {True, True, True, True, True}), "Hello World" })
+  Style { Only (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleText (Style { Just Code, "Hello World" })
-  Style { Just (Text {False, False, False, False, False}), "Hello World" }
+  > toggleText (Style { Only Code, "Hello World" })
+  Style { Only (Text {False, False, False, False, False}), "Hello World" }
 
-  > toggleText (Style { Just (Image Nothing), "https://google.com/google.png" })
-  Style { Just (Text {False, False, False, False, False}), "https://google.com/google.png" }
+  > toggleText (Style { Only (Image Nothing), "https://google.com/google.png" })
+  Style { Only (Text {False, False, False, False, False}), "https://google.com/google.png" }
 
 -}
 toggleText : Style -> Style
@@ -504,8 +540,8 @@ This is for debugging use only
 serializeToString : Style -> String
 serializeToString (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just style_type ->
-      "Style { Just (" ++ (serializeStyleTypeToString style_type) ++ "), " ++ text ++ " }"
+    Only style_type ->
+      "Style { Only (" ++ (serializeStyleTypeToString style_type) ++ "), " ++ text ++ " }"
 
     Link href style_type ->
       "Style { Link " ++ href ++ " (" ++ (serializeStyleTypeToString style_type) ++ "), " ++ text ++ " }"
@@ -572,7 +608,7 @@ of a helper function
 
 examples:
 
-  > renderStyle (Style { Just (Text {False, True, False, False, False}), "hello world" })
+  > renderStyle (Style { Only (Text {False, True, False, False, False}), "hello world" })
   b [] [ text "hello world" ]
 
   > renderStyle (Style { Link "https://google.com" (Text {True, True, True, True, True}), "hello world" })
@@ -592,7 +628,7 @@ examples:
 renderStyle : Style -> Html msg
 renderStyle (Style { link_wrapper, text }) =
   case link_wrapper of
-    Just style_type ->
+    Only style_type ->
       renderStyleType style_type text
 
     Link url style_type ->
