@@ -60,6 +60,8 @@ type alias Modifiers =
   }
 
 
+{-| Initialize modifiers with sane defaults
+-}
 defaultModifiers =
   { ctrl = False
   , alt = False

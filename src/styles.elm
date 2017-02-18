@@ -18,7 +18,7 @@ module Styles exposing
     (Style, setLinkHref, setText, appendText, toggleCode, toggleImage,
     toggleText, toggleStrike, toggleUnderline, toggleItalic, toggleBold,
     toggleHeading, toggleLink, serializeToString, renderStyle, isEmpty,
-    getText, setMouseoverText)
+    getText, setMouseoverText, defaultStyle)
 
 {-|
 @docs Style
@@ -26,7 +26,7 @@ module Styles exposing
 @docs setLinkHref, setText, appendText, toggleCode, toggleImage, toggleStrike
 @docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
 @docs serializeToString, renderStyle, isEmpty, getText, setMouseoverText
-@docs toggleText
+@docs toggleText, defaultStyle
 -}
 
 import Html exposing (..)
@@ -70,6 +70,8 @@ defaultAttributes =
   }
 
 
+{-| Initialize style with sane defaults
+-}
 defaultStyle : Style
 defaultStyle =
   Style
