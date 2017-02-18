@@ -70,6 +70,14 @@ defaultAttributes =
   }
 
 
+defaultStyle : Style
+defaultStyle =
+  Style
+    { link_wrapper = Only (Text defaultAttributes)
+    , text = ""
+    }
+
+
 {-| Set the URL of a link in a content chain
 
 examples:
