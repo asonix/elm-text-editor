@@ -15,16 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Styles exposing
-    (Style(..), setLinkHref, updateText, appendText, toggleCode, toggleImage,
-    toggleStrike, toggleUnderline, toggleItalic, toggleBold, toggleHeading,
-    toggleLink, serializeToString, renderStyle, isEmpty, getText)
+    (Style, setLinkHref, setText, appendText, toggleCode, toggleImage,
+    toggleText, toggleStrike, toggleUnderline, toggleItalic, toggleBold,
+    toggleHeading, toggleLink, serializeToString, renderStyle, isEmpty,
+    getText, setMouseoverText)
 
 {-|
 @docs Style
 
-@docs setLinkHref, updateText, appendText, toggleCode, toggleImage, toggleStrike
+@docs setLinkHref, setText, appendText, toggleCode, toggleImage, toggleStrike
 @docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
-@docs serializeToString, renderStyle, isEmpty, getText
+@docs serializeToString, renderStyle, isEmpty, getText, setMouseoverText
 -}
 
 import Html exposing (..)
@@ -34,549 +35,533 @@ import String
 
 {-| Internal representation of Styled Text.
 -}
+
+type StyleAttributes
+  = StyleAttributes
+    { heading : Bool
+    , bold : Bool
+    , italic : Bool
+    , underline : Bool
+    , strike : Bool
+    }
+
+type StyleType
+  = Text StyleAttributes
+  | Code
+  | Image (Maybe String) -- Image with mouseover text
+
+type LinkWrapper
+  = Just StyleType
+  | Link String StyleType
+
 type Style
-  = Text String
-  | Image String
-  | Code String
-  | Heading Style
-  | Link String Style
-  | Bold Style
-  | Italic Style
-  | Underline Style
-  | Strike Style
+  = Style
+    { style_type : LinkWrapper
+    , text : String
+    }
+
+
+defaultAttributes : StyleAttributes
+defaultAttributes =
+  StyleAttributes
+    { heading = False
+    , bold = False
+    , italic = False
+    , underline = False
+    , strike = False
+    }
 
 
 {-| Set the URL of a link in a content chain
 
 examples:
 
-  >appendText ", hello" (Bold (Italic (Text "hi")))
-  Bold (Italic (Text "hi, hello"))
-
-  >appendText ", hello" (Link "https://yahoo.com" (Bold (Text "hi")))
-  Link "https://yahoo.com" (Bold (Text "hi, hello"))
+  > appendText " hey" (Style {_, "hello"})
+  Style {_, "hello hey"}
 
 -}
 appendText : String -> Style -> Style
-appendText text content =
-  case content of
-    Text str ->
-      Text (str ++ text)
-
-    Image str ->
-      Image (str ++ text)
-
-    Code str ->
-      Code (str ++ text)
-
-    Heading content ->
-      Heading (appendText text content)
-
-    Link href content ->
-      Link href (appendText text content)
-
-    Bold content ->
-      Bold (appendText text content)
-
-    Italic content ->
-      Italic (appendText text content)
-
-    Underline content ->
-      Underline (appendText text content)
-
-    Strike content ->
-      Strike (appendText text content)
+appendText text (Style { link_wrapper, styled_text } =
+  Style { link_wrapper, styled_text ++ text }
 
 
 {-| Set the URL of a link in a content chain
 
 examples:
 
-  >updateText "hello" (Bold (Italic (Text "hi")))
-  Bold (Italic (Text "hello"))
-
-  >updateText "hello" (Link "https://yahoo.com" (Bold (Text "hi")))
-  Link "https://yahoo.com" (Bold (Text "hello"))
+  > setText "hello" (Style { _, "hi" })
+  Style { _, "hello" }
 
 -}
-updateText : String -> Style -> Style
-updateText text content =
-  case content of
-    Text _ ->
-      Text text
+setText : String -> Style -> Style
+setText text (Style { link_wrapper, _ } =
+  Style { link_wrapper, text }
 
-    Image _ ->
-      Image text
 
-    Code _ ->
-      Code text
+{-| getText returns the string from inside the content
 
-    Heading content ->
-      Heading (updateText text content)
+examples:
 
-    Link href content ->
-      Link href (updateText text content)
+  > getText (Style { _, "hi" })
+  "hi"
 
-    Bold content ->
-      Bold (updateText text content)
+-}
+getText : Style -> String
+getText (Style { _, text }) = text
 
-    Italic content ->
-      Italic (updateText text content)
 
-    Underline content ->
-      Underline (updateText text content)
+{-| Determines whether there is any text in the content
 
-    Strike content ->
-      Strike (updateText text content)
+examples:
+
+  > isEmpty (Style { _, "hello" })
+  False
+
+  > isEmpty (Style { _, "" })
+  True
+
+-}
+isEmpty : Style -> Bool
+isEmpty (Style { _, text }) = String.isEmpty text
 
 
 {-| Set the URL of a link in a content chain
 
 examples:
 
-  >setLinkHref "https://google.com" (Bold (Italic (Text "hi")))
-  Bold (Italic (Link "https://google.com" (Text "hi")))
+  > setLinkHref "https://google.com" (Style {Just _, "hello"})
+  Style {Just _, "hello"}
 
-  >setLinkHref "https://google.com" (Link "https://yahoo.com" (Bold (Text "hi")))
-  Link "https://google.com" (Bold (Text "hi"))
+  > setLinkHref "https://google.com" (Style {Link "https://yahoo.com" _, "hello"})
+  Style {Link "https://google.com" _, "hello"}
 
 -}
 setLinkHref : String -> Style -> Style
-setLinkHref href content =
-  case content of
-    Text str ->
-      Link href (Text str)
+setLinkHref href (Style { link_wrapper, text } =
+  case link_wrapper of
+    Just _ ->
+      Style { link_wrapper, text }
 
-    Image str ->
-      Link href (Image str)
-
-    Code str ->
-      Link href (Code str)
-
-    Heading content ->
-      Heading (setLinkHref href content)
-
-    Link _ content ->
-      Link href content
-
-    Bold content ->
-      Bold (setLinkHref href content)
-
-    Italic content ->
-      Italic (setLinkHref href content)
-
-    Underline content ->
-      Underline (setLinkHref href content)
-
-    Strike content ->
-      Strike (setLinkHref href content)
-
-{- Form a hierarchy of styles. Order:
-
-Link (Heading (Bold (Italic (Underline (Strike (Text str))))))
-
-Link (Image str)
-Link (Code str)
--}
+    Link _ style_type ->
+      Style { Link href style_type, text }
 
 
 {-| Links can be applied to any type of content.
 
-They are also applied in front of any other styles
-
 examples:
 
-  > toggleLink "https://google.com" (Heading (Text "hello world"))
-  Link "https://google.com" (Heading (Text "hello world"))
+  > toggleLink "https://google.com" (Style {Text _, "hello world"})
+  Style {Link "https://google.com" _, "hello world"}
 
-  > toggleLink "" (Link "https://google.com" (Text "hello world"))
-  Text "hello world"
+  > toggleLink "" Style {Link "https://google.com" _, "hello world"}
+  Style {Text _, "hello world"}
 
 -}
 toggleLink : String -> Style -> Style
-toggleLink href current_content =
-  case current_content of
-    Text str ->
-      Link href (Text str)
+toggleLink href (Style { link_wrapper, text }) =
+  case link_wrapper of
+    Just style_type ->
+      Style { Link href style_type, text }
 
-    Image str ->
-      Link href (Image str) -- Images can be links
+    Link _ style_type ->
+      Style { Just style_type, text }
 
-    Code str ->
-      Link href (Code str) -- Code can be a link
 
-    Link _ content ->
-      content -- remove link if present
+setMouseoverTextOfStyleType : String -> StyleType -> StyleType
+setMouseoverTextOfStyleType string style_type =
+  case style_type of
+    Image _ ->
+      Image (Just string)
 
-    Heading content ->
-      Link href (Heading content)
+    _ ->
+      style_type
 
-    Bold content ->
-      Link href (Bold content)
 
-    Italic content ->
-      Link href (Italic content)
+{-| Set the mouseover text of an image
 
-    Underline content ->
-      Link href (Underline content)
+examples:
 
-    Strike content ->
-      Link href (Strike content)
+  > setMouseoverText "A cute catte" (Style { Just (Image Nothing), "https://catte.com/cat.png" })
+  Style { Just (Image (Just "A cute catte")), "https://catte.com/cat.png" })
+
+  > setMouseoverText "some text" (Style { Just Code, "Enum.map/2" })
+  Style { Just Code, "Enum.map/2" }
+-}
+setMouseoverText : String -> Style -> Style
+setMouseoverText string (Style { link_wrapper, text }) =
+  case link_wrapper of
+    Just style_type ->
+      Just (setMouseoverTextOfStyleType string style_type)
+
+    Link href style_type ->
+      Link href (setMouseoverTextOfStyleType string style_type)
+
+
+{-| These next functions are for toggling StyleAttributes.
+
+They are useful within this module only
+-}
+
+toggleHeadingAttribute : StyleAttributes -> StyleAttributes
+toggleHeadingAttribute style_attributes =
+    { style_attributes | heading = not style_attributes.heading }
+
+
+toggleBoldAttribute : StyleAttributes -> StyleAttributes
+toggleBoldAttribute style_attributes =
+    { style_attributes | bold = not style_attributes.bold }
+
+
+toggleItalicAttribute : StyleAttributes -> StyleAttributes
+toggleItalicAttribute style_attributes =
+    { style_attributes | italic = not style_attributes.italic }
+
+
+toggleUnderlineAttribute : StyleAttributes -> StyleAttributes
+toggleUnderlineAttribute style_attributes =
+    { style_attributes | underline = not style_attributes.underline }
+
+
+toggleStrikeAttribute : StyleAttributes -> StyleAttributes
+toggleStrikeAttribute style_attributes =
+    { style_attributes | strike = not style_attributes.strike }
+
+
+{- Attributes can only be toggled for Text
+-}
+toggleAttribute (StyleAttributes -> StyleAttributes) -> StyleType -> StyleType
+toggleAttribute fn style_type =
+  case style_type of
+    Text style_attributes ->
+      Text (fn style_attributes)
+
+    _ ->
+      style_type
+
+
+toggleAttributeFromStyle : (StyleAttributes -> StyleAttributes) -> Style -> Style
+toggleAttributeFromStyle fn (Style { link_wrapper, text }) =
+  case link_wrapper of
+    Just style_type ->
+      Style { Just (toggleAttribute fn style_type), text }
+
+    Link href style_type ->
+      Style { Link href (toggleAttribute fn style_type), text }
 
 
 {-| Headings cannot be applied to Code or Image.
 
-They are also applied in front of all styles except link
-
 examples:
 
-  > toggleHeading (Bold (Text "hello world"))
-  Heading (Bold (Text "hello world"))
+  > toggleHeading (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Text {False, True, True, True, True}), "Hello World" }
 
-  > toggleHeading (Heading (Text "hello world"))
-  Text "hello world"
+  > toggleHeading (Style { Just (Text {False, True, True, True, True}), "Hello World" })
+  Style { Just (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleHeading (Link "https://google.com (Heading (Text "hello world")))
-  Link "https://google.com" (Text "hello world")
+  > toggleHeading (Style { Just Code, "Hello World" })
+  Style { Just Code, "Hello World" }
+
+  > toggleHeading (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleHeading : Style -> Style
-toggleHeading current_content =
-  case current_content of
-    Text str ->
-      Heading (Text str)
-
-    Image str ->
-      Image str -- don't style images
-
-    Code str ->
-      Code str -- don't style code
-
-    Link href content ->
-      Link href (toggleHeading content)
-
-    Heading content ->
-      content -- remove heading if applied
-
-    Bold content ->
-      Heading (Bold content)
-
-    Italic content ->
-      Heading (Italic content)
-
-    Underline content ->
-      Heading (Underline content)
-
-    Strike content ->
-      Heading (Strike content)
+toggleHeading =
+  toggleAttributeFromStyle toggleHeadingAttribute
 
 
 {-| Bold cannot be applied to Code or Image.
 
-Bold is preceded by Link and Heading
-
 examples:
 
-  > toggleBold (Italic (Text "hello world"))
-  Bold (Italic (Text "hello world"))
+  > toggleBold (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Text {True, False, True, True, True}), "Hello World" }
 
-  > toggleBold (Bold (Italic (Text "hello world")))
-  Italic (Text "hello world")
+  > toggleBold (Style { Just (Text {True, False, True, True, True}), "Hello World" })
+  Style { Just (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleBold (Link "https://google.com" (Italic (Text "hello world")))
-  Link "https://google.com" (Bold (Italic (Text "hello world")))
+  > toggleBold (Style { Just Code, "Hello World" })
+  Style { Just Code, "Hello World" }
+
+  > toggleBold (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleBold : Style -> Style
-toggleBold current_content =
-  case current_content of
-    Text str ->
-      Bold (Text str)
-
-    Image str ->
-      Image str -- don't style images
-
-    Code str ->
-      Code str -- don't style code
-
-    Link href content ->
-      Link href (toggleBold content)
-
-    Heading content ->
-      Heading (toggleBold content)
-
-    Bold content ->
-      content -- remove style if applied
-
-    Italic content ->
-      Bold (Italic content)
-
-    Underline content ->
-      Bold (Underline content)
-
-    Strike content ->
-      Bold (Strike content)
+toggleBold =
+  toggleAttributeFromStyle toggleBoldAttribute
 
 
 {-| Italic cannot be applied to Code or Image.
 
-Italic is preceded by Link, Heading, and Bold
-
 examples:
 
-  > toggleItalic (Bold (Text "hello world"))
-  Bold (Italic (Text "hello world"))
+  > toggleItalic (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Text {True, True, False, True, True}), "Hello World" }
 
-  > toggleItalic (Bold (Italic (Text "hello world")))
-  Bold (Text "hello world")
+  > toggleItalic (Style { Just (Text {True, True, False, True, True}), "Hello World" })
+  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+
+  > toggleItalic (Style { Just Code, "Hello World" })
+  Style { Just Code, "Hello World" }
+
+  > toggleItalic (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleItalic : Style -> Style
-toggleItalic current_content =
-  case current_content of
-    Text str ->
-      Italic (Text str)
-
-    Image str ->
-      Image str -- don't style images
-
-    Code str ->
-      Code str -- don't style code
-
-    Link href content ->
-      Link href (toggleItalic content)
-
-    Heading content ->
-      Heading (toggleItalic content)
-
-    Bold content ->
-      Bold (toggleItalic content)
-
-    Italic content ->
-      content -- remove style if applied
-
-    Underline content ->
-      Italic (Underline content)
-
-    Strike content ->
-      Italic (Strike content)
+toggleItalic =
+  toggleAttributeFromStyle toggleItalicAttribute
 
 
 {-| Underline cannot be applied to Code or Image.
 
-Underline is preceded by Link, Heading, Bold, and Italic
-
 examples:
 
-  > toggleUnderline (Bold (Text "hello world"))
-  Bold (Underline (Text "hello world"))
+  > toggleUnderline (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Text {True, True, True, False, True}), "Hello World" }
 
-  > toggleUnderline (Bold (Underline (Text "hello world")))
-  Bold (Text "hello world")
+  > toggleUnderline (Style { Just (Text {True, True, True, False, True}), "Hello World" })
+  Style { Just (Text {True, True, True, True, True}), "Hello World" }
+
+  > toggleUnderline (Style { Just Code, "Hello World" })
+  Style { Just Code, "Hello World" }
+
+  > toggleUnderline (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleUnderline : Style -> Style
-toggleUnderline current_content =
-  case current_content of
-    Text str ->
-      Underline (Text str)
-
-    Image str ->
-      Image str -- don't style images
-
-    Code str ->
-      Code str -- don't style code
-
-    Link href content ->
-      Link href (toggleUnderline content)
-
-    Heading content ->
-      Heading (toggleUnderline content)
-
-    Bold content ->
-      Bold (toggleUnderline content)
-
-    Italic content ->
-      Italic (toggleUnderline content)
-
-    Underline content ->
-      content -- remove style if applied
-
-    Strike content ->
-      Underline (Strike content)
+toggleUnderline =
+  toggleAttributeFromStyle toggleUnderlineAttribute
 
 
 {-| Strike cannot be applied to Code or Image.
 
-Strike is preceded by Link, Heading, Bold, Italic, and Underline
-
 examples:
 
-  > toggleStrike (Bold (Text "hello world"))
-  Bold (Strike (Text "hello world"))
+  > toggleStrike (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Text {True, True, True, True, False}), "Hello World" }
 
-  > toggleStrike (Bold (Strike (Text "hello world")))
-  Bold (Text "hello world")
+  > toggleStrike (Style { Just (Text {True, True, True, True, False}), "Hello World" })
+  Style { Just (Text {True, True, True, True, True}), "Hello World" }
 
-  > toggleStrike (Link "https://google.com" (Bold (Text "hello world")))
-  Link "https://google.com" (Bold (Strike (Text "hello world")))
+  > toggleStrike (Style { Just Code, "Hello World" })
+  Style { Just Code, "Hello World" }
+
+  > toggleStrike (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Image Nothing), "https://google.com/google.png" }
 
 -}
 toggleStrike : Style -> Style
-toggleStrike current_content =
-  case current_content of
-    Text str ->
-      Strike (Text str)
+toggleStrike =
+  toggleAttributeFromStyle toggleStrikeAttribute
 
-    Image str ->
-      Image str -- don't style images
 
-    Code str ->
-      Code str -- don't style code
+{- The following section is for toggling StyleTypes to and from Text -}
 
-    Link href content ->
-      Link href (toggleStrike content)
+toggleImageFromStyleType : StyleType -> StyleType
+toggleImageFromStyleType style_type =
+  case style_type of
+    Image _ ->
+      Text defaultAttributes
 
-    Heading content ->
-      Heading (toggleStrike content)
+    _ ->
+      Image Nothing
 
-    Bold content ->
-      Bold (toggleStrike content)
 
-    Italic content ->
-      Italic (toggleStrike content)
+toggleCodeFromStyleType : StyleType -> StyleType
+toggleCodeFromStyleType style_type =
+  case style_type of
+    Code ->
+      Text defaultAttributes
 
-    Underline content ->
-      Underline (toggleStrike content)
+    _ ->
+      Code
 
-    Strike content ->
-      content -- remove style if applied
+
+toggleTextFromStyleType : StyleType -> StyleType
+toggleTextFromStyleType style_type =
+  case style_type of
+    Text attributes ->
+      style_type
+
+    _ ->
+      Text defaultAttributes
+
+
+toggleStyleTypeFromStyle : (StyleType -> StyleType) -> Style -> Style
+toggleStyleTypeFromStyle fn Style { link_wrapper, text } =
+  case link_wrapper of
+    Just style_type ->
+      Style { Just (fn style_type), text }
+
+    Link href style_type ->
+      Style { Link href (fn style_type), text }
 
 
 {-| toggleImage removes styling (except link) and converts the remaining Text to an Image
 
 examples:
 
-  > toggleImage (Bold (Text "https://google.com/google.png"))
-  Image "hello world"
+  > toggleImage (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Image Nothing), "Hello World" }
 
-  > toggleImage (Image "https://google.com/google.png")
-  Text "https://google.com/google.png"
+  > toggleImage (Style { Just Code, "Hello World" })
+  Style { Just (Image Nothing), "Hello World" }
 
-  > toggleImage (Link "https://google.com" (Text "https://google.com/google.png"))
-  Link "https://google.com" (Image "https://google.com/google.png"
+  > toggleImage (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Text {False, False, False, False, False}), "https://google.com/google.png" }
 
 -}
 toggleImage : Style -> Style
-toggleImage current_content =
-  case current_content of
-    Text str ->
-      Image str
-
-    Image str ->
-      Text str
-
-    Code str ->
-      Code str -- don't style code
-
-    Link href content ->
-      Link href (toggleImage content)
-
-    Heading content ->
-      toggleImage content
-
-    Bold content ->
-      toggleImage content
-
-    Italic content ->
-      toggleImage content
-
-    Underline content ->
-      toggleImage content
-
-    Strike content ->
-      toggleImage content
+toggleImage =
+  toggleStyleTypeFromStyle toggleImageFromStyleType
 
 
 {-| toggleCode removes styling (except link) and converts the remaining Text to Code
 
 examples:
 
-  > toggleCode (Bold (Text "hello world"))
-  Code "hello world"
+  > toggleCode (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just Code, "Hello World" }
 
-  > toggleCode (Code "hello world")
-  Text "hello world"
+  > toggleCode (Style { Just Code, "Hello World" })
+  Style { Just (Text {False, False, False, False, False}), "Hello World" }
 
-  > toggleCode (Link "https://google.com (Text "hello world"))
-  Link "https://google.com" (Code "hello world")
+  > toggleCode (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just Code, "https://google.com/google.png" }
 
 -}
 toggleCode : Style -> Style
-toggleCode current_content =
-  case current_content of
-    Text str ->
-      Code str
+toggleCode =
+  toggleStyleTypeFromStyle toggleCodeFromStyleType
 
-    Image str ->
-      Image str -- don't style images
 
-    Code str ->
-      Text str
+{-| toggleText ensures the style is of Text type
 
-    Link href content ->
-      Link href (toggleCode content)
+examples:
 
-    Heading content ->
-      toggleCode content
+  > toggleText (Style { Just (Text {True, True, True, True, True}), "Hello World" })
+  Style { Just (Text {True, True, True, True, True}), "Hello World" }
 
-    Bold content ->
-      toggleCode content
+  > toggleText (Style { Just Code, "Hello World" })
+  Style { Just (Text {False, False, False, False, False}), "Hello World" }
 
-    Italic content ->
-      toggleCode content
+  > toggleText (Style { Just (Image Nothing), "https://google.com/google.png" })
+  Style { Just (Text {False, False, False, False, False}), "https://google.com/google.png" }
 
-    Underline content ->
-      toggleCode content
+-}
+toggleText : Style -> Style
+toggleText =
+  toggleStyleTypeFromStyle toggleTextFromStyleType
 
-    Strike content ->
-      toggleCode content
 
+serializeStyleAttributesToString : StyleAttributes -> String
+serializeStyleAttributesToString style_attributes =
+  let
+      heading = "heading: "
+        ++ if style_attributes.heading then "True" else "False"
+
+      bold = "bold: "
+        ++ if style_attributes.bold then "True" else "False"
+
+      italic = "italic: "
+        ++ if style_attributes.italic then "True" else "False"
+
+      underline = "undelrine: "
+        ++ if style_attributes.underline then "True" else "False"
+
+      strike = "strike: "
+        ++ if style_attributes.strike then "True" else "False"
+  in
+    heading ++ ", " ++ bold ++ ", " ++ italic ++ ", "
+      ++ underline ++ ", " ++ strike
+
+
+serializeStyleTypeToString : StyleType -> String
+serializeStyleTypeToString style_type =
+  case style_type of
+    Text attributes ->
+      "Text (" ++ (serializeStyleAttributesToString attributes) ++ ")"
+
+    Image mouseover ->
+      case mouseover of
+        Just text ->
+          "Image (Just " ++ text ++ ")"
+
+        Nothing ->
+          "Image Nothing"
+
+    Code ->
+      "Code"
 
 {-| Provide a string representation of styling
 
 This is for debugging use only
 -}
 serializeToString : Style -> String
-serializeToString content =
-  case content of
-    Text str ->
-      "(Text \"" ++ str ++ "\")"
+serializeToString (Style { link_wrapper, text }) =
+  case link_wrapper of
+    Just style_type ->
+      "Style { Just (" ++ (serializeStyleTypeToString style_type) ++ "), " ++ text ++ " }"
 
-    Image str ->
-      "(Image \"" ++ str ++ "\")"
+    Link href style_type ->
+      "Style { Link " ++ href ++ " (" ++ (serializeStyleTypeToString style_type) ++ "), " ++ text ++ " }"
 
-    Code str ->
-      "(Code \"" ++ str ++ "\")"
 
-    Link href content ->
-      "(Link \"" ++ href ++ "\" " ++ (serializeToString content) ++ ")"
+renderStyleAttributes : StyleAttributes -> String -> Html msg
+renderStyleAttributes attributes str =
+  let
+      heading =
+        if attributes.heading then
+          h3 [] [ text str ]
+        else
+          text str
 
-    Heading content ->
-      "(Heading " ++ (serializeToString content) ++ ")"
+      bold =
+        if attributes.bold then
+          b [] [ heading ]
+        else
+          heading
 
-    Bold content ->
-      "(Bold " ++ (serializeToString content) ++ ")"
+      italic =
+        if attributes.italic then
+          i [] [ bold ]
+        else
+          bold
 
-    Italic content ->
-      "(Italic " ++ (serializeToString content) ++ ")"
+      underline =
+        if attributes.underline then
+          u [] [ italic ]
+        else
+          italic
 
-    Underline content ->
-      "(Underline " ++ (serializeToString content) ++ ")"
+      strike =
+        if attributes.strike then
+          span [ class "strike" ] [ underline ]
+        else
+          underline
+  in
+      strike
 
-    Strike content ->
-      "(Strike " ++ (serializeToString content) ++ ")"
+renderStyleType : StyleType -> String -> Html msg
+renderStyleType style_type string =
+  case style_type of
+    Text attributes ->
+      renderStyleAttributes attributes string
 
+    Image mouseover ->
+      case mouseover of
+        Just str ->
+          img [ src string, title str ] []
+
+        Nothing ->
+          img [ src string ] []
+
+    Code ->
+      code [] [ text string ]
 
 {-| Converts a Style into HTML elements
 
@@ -587,10 +572,10 @@ of a helper function
 
 examples:
 
-  > renderStyle (Bold (Text "hello world"))
+  > renderStyle (Style { Just (Text {False, True, False, False, False}), "hello world" })
   b [] [ text "hello world" ]
 
-  > renderStyle (Link "https://google.com" (Heading (Bold (Italic (Underline (Strike (Text "hello world")))))))
+  > renderStyle (Style { Link "https://google.com" (Text {True, True, True, True, True}), "hello world" })
   a [ href "https://google.com" ]
     [ h3 []
         [ b []
@@ -605,109 +590,10 @@ examples:
     ]
 -}
 renderStyle : Style -> Html msg
-renderStyle current_content =
-  case current_content of
-    Text str ->
-      text str
+renderStyle (Style { link_wrapper, text }) =
+  case link_wrapper of
+    Just style_type ->
+      renderStyleType style_type text
 
-    Image str ->
-      img [ src str ] []
-
-    Code str ->
-      code [] [ text str ]
-
-    Link link content ->
-      a [ href link ] [ renderStyle content ]
-
-    Heading content ->
-      h3 [] [ renderStyle content ]
-
-    Bold content ->
-      b [] [ renderStyle content ]
-
-    Italic content ->
-      i [] [ renderStyle content ]
-
-    Underline content ->
-      u [] [ renderStyle content ]
-
-    Strike content ->
-      span [ class "strike" ] [ renderStyle content ]
-
-
-{-| Determines whether there is any text in the content
-
-examples:
-
-  > isEmpty Text ""
-  True
-
-  > isEmtpy Heading (Text "")
-  True
-
-  > isEmpty Heading (Text "h")
-  False
-
--}
-isEmpty : Style -> Bool
-isEmpty current_content =
-  case current_content of
-    Text str ->
-      String.isEmpty str
-
-    Image str ->
-      String.isEmpty str
-
-    Code str ->
-      String.isEmpty str
-
-    Link _ content ->
-      isEmpty content
-
-    Heading content ->
-      isEmpty content
-
-    Bold content ->
-      isEmpty content
-
-    Italic content ->
-      isEmpty content
-
-    Underline content ->
-      isEmpty content
-
-    Strike content ->
-      isEmpty content
-
-
-{-| getText returns the string from inside the content
--}
-getText : Style -> String
-getText current_content =
-  case current_content of
-    Text str ->
-      str
-
-    Image str ->
-      str
-
-    Code str ->
-      str
-
-    Link _ content ->
-      getText content
-
-    Heading content ->
-      getText content
-
-    Bold content ->
-      getText content
-
-    Italic content ->
-      getText content
-
-    Underline content ->
-      getText content
-
-    Strike content ->
-      getText content
+    Link url style_type ->
+      a [ href url ] [ renderStyleType style_type text ]
