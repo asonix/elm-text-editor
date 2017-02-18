@@ -15,12 +15,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Keys exposing
-    (KeyCmd(..), Modifiers, handleCode)
+    (KeyCmd(..), Modifiers, handleCode, defaultModifiers)
 
 {-|
 @docs KeyCmd
 
-@docs handleCode
+@docs handleCode defaultModifiers
 -}
 
 -- Imports
@@ -57,6 +57,13 @@ type alias Modifiers =
   { ctrl: Bool
   , alt: Bool
   , shift: Bool
+  }
+
+
+defaultModifiers =
+  { ctrl = False
+  , alt = False
+  , shift = False
   }
 
 
