@@ -52,70 +52,48 @@ main =
 
 -- MODEL
 
+type alias Paragraph = List Style
+type alias Content = List Paragraph
+
+
+type alias ContentNavigation =
+  { previous_paragraphs : Content
+  , previous_styles : Paragraph
+  , current_style : Style
+  , previous_text : String
+  , next_text : String
+  , next_styles : Paragraph
+  , next_paragraphs : Content
+  }
+
+
 type alias Model =
-  { content: Content
-  , cursor: Cursor
-  , mods: Modifiers
-  , input: String
+  { content_navigation : ContentNavigation
+  , mods : Modifiers
   }
 
 
-type alias Cursor =
-  { paragraph: Int
-  , style: Int
-  , character: Int
+defaultContentNavigation : ContentNavigation
+defaultContentNavigation =
+  { previous_paragraphs = []
+  , previous_styles = []
+  , current_style = defaultStyle
+  , previous_text = ""
+  , next_text = ""
+  , next_styles = []
+  , next_paragraphs = []
   }
-
-
-type alias Paragraph = Array Style
-type alias Content = Array Paragraph
-
-
-delFromArray : Int -> Array a -> Array a
-delFromArray index array =
-  Array.append
-    (Array.slice 0 index array)
-    (Array.slice (index+1) (Array.length array) array)
-
-
-deleteStyleFromContent : Int -> Int -> Content -> Content
-deleteStyleFromContent paragraph_index style_index content =
-  case Array.get paragraph_index content of
-    Just paragraph ->
-      paragraph
-        |> delFromArray style_index
-        |> (flip (Array.set paragraph_index) content)
-
-    Nothing ->
-      content
-
-
-serializeContent : (List a -> b) -> (Style -> a) -> Content -> List b
-serializeContent transform inner_map =
-  Array.toList << Array.map (transform << Array.toList << Array.map inner_map)
-
 
 -- INIT
 
 init : (Model, Cmd Msg)
-init = ({ content =
-          Array.fromList
-            [ Array.fromList
-                [ Text ""
-                ]
-            ]
-        , mods =
-          { ctrl = False
-          , alt = False
-          , shift = False
-          }
-        , cursor =
-          { paragraph = 0
-          , style = 0
-          , character = 0
-          }
-        , input = ""
-        }, Cmd.none)
+init =
+    ( { content_navigation = defaultContentNavigation
+      , mods = defaultModifiers
+      , input = ""
+      }
+    , Cmd.none
+    )
 
 
 -- UPDATE
@@ -211,72 +189,123 @@ keydown model key_code =
           (model, Cmd.none)
 
 
+moveLeftThroughText : ContentNavigation -> ContentNavigation
+moveLeftThroughText cn =
+  let
+      new_previous =
+        String.dropRight 1 cn.previous_text
+
+      new_next =
+        (String.right 1 cn.previous_text) ++ cn.next_text
+  in
+      { cn
+          | previous_text = new_previous
+          , next_text = new_next
+      }
+
+
+moveLeftThroughStyles : ContentNavigation -> ContentNavigation
+moveLeftThroughStyles cn =
+  let
+      new_previous_styles =
+        List.take
+          (List.length cn.previous_styles - 1)
+          cn.previous_styles
+
+      new_current_style =
+        cn.previous_styles
+          |> List.reverse
+          |> List.head
+          |> fromMaybeWithDefault identity defaultStyle
+
+      new_current_style_text =
+        getText new_current_style
+
+      new_previous_text =
+        String.dropRight 1 new_current_style_text
+
+      new_next_text =
+        String.right 1 new_current_style_text
+
+      new_next_styles =
+        cn.current_style :: cn.next_styles
+  in
+      { cn
+          | previous_styles = new_previous_styles
+          , current_style = new_current_style
+          , previous_text = new_previous_text
+          , next_text = new_next_text
+          , next_styles = new_next_styles
+      }
+
+
+moveLeftThroughParagraphs : ContentNavigation -> ContentNavigation
+moveLeftThroughParagraphs cn =
+  let
+      new_previous_paragraphs =
+        List.take
+          (List.length cn.previous_paragraphs - 1)
+          cn.previous_paragraphs
+
+      new_current_paragraph =
+        cn.previous_paragraphs
+          |> List.reverse
+          |> List.head
+          |> fromMaybeWithDefault identity []
+
+      new_previous_styles =
+        List.take
+          (List.length new_current_paragraph - 1)
+          new_current_paragraph
+
+      new_current_style =
+        new_current_paragraph
+          |> List.reverse
+          |> List.head
+          |> fromMaybeWithDefault identity defaultStyle
+
+      new_previous_text =
+        getText new_current_style
+
+      new_next_text = ""
+
+      new_next_styles = []
+
+      new_next_paragraphs =
+        (cn.current_style :: cn.next_styles) :: cn.next_paragraphs
+  in
+      { cn
+          | previous_paragraphs = new_previous_paragraphs
+          , previous_styles = new_previous_styles
+          , current_style = new_current_style
+          , previous_text = new_previous_text
+          , next_text = new_next_text
+          , next_styles = new_next_styles
+          , next_paragraphs = new_next_paragraphs
+      }
+
+
 moveLeft : Model -> Model
 moveLeft model =
   let
-      cursor : Cursor
-      cursor = model.cursor
+      cn = model.content_navigation
 
-      cursor_tuple : (Int, Int, Int)
-      cursor_tuple =
-        ( cursor.paragraph
-        , cursor.style
-        , cursor.character
-        )
+      shift_text = not (String.isEmpty cn.next_text)
+
+      shift_styles = not (List.isEmpty cn.previous_styles)
+
+      shift_paragraphs = not (List.isEmpty cn.previous_paragraphs)
   in
-      case cursor_tuple of
-        (0, 0, 0) ->
-          model
+      case (shift_text, shift_styles, shift_paragraphs) of
+        (True, _, _) ->
+          { model | content_navigation = moveLeftThroughText cn }
 
-        (_, 0, 0) ->
-          cursorToEndOfLine (cursor.paragraph - 1) model
+        (False, True, _) ->
+          { model | content_navigation = moveLeftThroughStyles cn }
 
-        (_, _, 0) ->
-          cursorToEndOfStyle cursor.paragraph (cursor.style - 1) model
+        (False, False, True) ->
+          { model | content_navigation = moveLeftThroughParagraphs cn }
 
-        (_, _, _) ->
-          { model
-              | cursor =
-                { cursor
-                    | character = cursor.character - 1
-                }
-          }
-
-
-cursorToEndOfLine : Int -> Model -> Model
-cursorToEndOfLine paragraph_index model =
-  let
-      style_index : Int
-      style_index =
-        model.content
-          |> Array.get paragraph_index
-          |> fromMaybeWithDefault (flip (-) 1 << Array.length) 0
-  in
-      cursorToEndOfStyle paragraph_index style_index model
-
-
-cursorToEndOfStyle : Int -> Int -> Model -> Model
-cursorToEndOfStyle paragraph_index style_index model =
-  let
-      cursor : Cursor
-      cursor = model.cursor
-
-      character_position : Int
-      character_position =
-        model.content
-          |> Array.get (paragraph_index)
-          |> fromMaybe (Array.get style_index)
-          |> fromMaybe (Just << getText)
-          |> fromMaybeWithDefault (String.length) 0
-  in
-      { model
-          | cursor =
-            { cursor
-                | paragraph = paragraph_index
-                , style = style_index
-                , character = character_position
-            }
-      }
 
 findGreaterCharCount : Int -> Style -> (Int, Int) -> (Int, Int)
 findGreaterCharCount count style (char_count, index) =
