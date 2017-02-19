@@ -16,7 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module MaybeZipList exposing
     (MaybeZipList, shiftBack, shiftForward, toStart, toEnd,
-    insertBefore, insertAfter, removeCurrentForward, removeCurrentBack
+    insertBefore, insertAfter, removeCurrentForward, removeCurrentBack,
     toList, fromList, current, setCurrent, empty, isEmpty,
     canShiftBack, canShiftForward, merge, next, previous,
     deleteNext, deletePrevious)

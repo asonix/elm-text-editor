@@ -31,7 +31,7 @@ import Paragraph exposing (..)
 import Content exposing (..)
 import Keys exposing (..)
 import Keyboard
--- import Debug
+import Debug
 
 
 -- MAIN
@@ -118,7 +118,7 @@ keydown model key_code =
       mods = model.mods
 
       toggle : (Style -> Style) -> Model
-      toggle = toggleModelStyle model
+      toggle = toggleModelStyle (Debug.log "Model before key" model)
   in
       case handleCode model.mods key_code of
         Just Delete ->
@@ -198,7 +198,7 @@ shiftRight previous next =
 moveLeftThroughText : ContentNavigation -> ContentNavigation
 moveLeftThroughText cn =
   let
-      new_previous, new_next =
+      (new_previous, new_next) =
         shiftLeft cn.previous_text cn.next_text
   in
       { cn
@@ -210,7 +210,7 @@ moveLeftThroughText cn =
 moveRightThroughText : ContentNavigation -> ContentNavigation
 moveRightThroughText cn =
   let
-      new_previous, new_next =
+      (new_previous, new_next) =
         shiftRight cn.previous_text cn.next_text
   in
       { cn
@@ -224,13 +224,13 @@ moveLeftThroughParagraph cn =
   let
       content : Content
       content =
-        Content.updateParagraph (Paragraph.selectPreviousStyle) cn.content
+        Content.updateCurrentParagraph (Paragraph.selectPreviousStyle) cn.content
 
-      new_previous_text, new_next_text =
+      (new_previous_text, new_next_text) =
         content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.getText
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.getText
           |> flip (shiftLeft) ""
   in
       { cn
@@ -245,13 +245,13 @@ moveRightThroughParagraph cn =
   let
       content : Content
       content =
-        Content.updateParagraph (Paragraph.selectNextStyle) cn.content
+        Content.updateCurrentParagraph (Paragraph.selectNextStyle) cn.content
 
-      new_previous_text, new_next_text =
+      (new_previous_text, new_next_text) =
         content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.getText
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.getText
           |> shiftRight ""
   in
       { cn
@@ -268,14 +268,14 @@ moveLeftThroughContent cn =
       content =
         cn.content
           |> Content.selectPreviousParagraph
-          |> Content.updateParagraph (Paragraph.toEnd)
+          |> Content.updateCurrentParagraph (Paragraph.toEnd)
 
       new_previous_text : String
       new_previous_text =
         content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.getText
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.getText
 
       new_next_text : String
       new_next_text = ""
@@ -294,7 +294,7 @@ moveRightThroughContent cn =
       content =
         cn.content
           |> Content.selectNextParagraph
-          |> Content.updateParagraph (Paragraph.toStart)
+          |> Content.updateCurrentParagraph (Paragraph.toStart)
 
       new_previous_text : String
       new_previous_text = ""
@@ -303,8 +303,8 @@ moveRightThroughContent cn =
       new_next_text =
         content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.getText
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.getText
   in
       { cn
           | content = content
@@ -367,7 +367,7 @@ inputToContent input model =
       content =
         Content.updateCurrentParagraph
           (Paragraph.updateCurrentStyle
-            (Style.updateText combined_text))
+            (Styles.setText combined_text))
           cn.content
 
       new_cn : ContentNavigation
@@ -404,12 +404,9 @@ delete model =
 -- String.isEmpty cn.previous_text == True &&
 -- Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) == False &&
 -- Content.hasPreviousParagraph cn.content == True
-deleteAcrossParagraphs : Model -> Model
-deleteAcrossParagraphs model =
+deleteAcrossParagraphs : ContentNavigation -> ContentNavigation
+deleteAcrossParagraphs cn =
   let
-      cn : ContentNavigation
-      cn = model.content_navigation
-
       new_content : Content
       new_content = mergeWithPreviousParagraph cn.content
 
@@ -417,30 +414,23 @@ deleteAcrossParagraphs model =
       new_previous_text =
         new_content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.getText
-
-      new_cn : ContentNavigation
-      new_cn =
-        { cn
-            | content = new_content
-            , previous_text = new_previous_text
-            , next_text = ""
-        }
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.getText
   in
-      { model | content_navigation = new_cn }
+      { cn
+          | content = new_content
+          , previous_text = new_previous_text
+          , next_text = ""
+      }
 
 
 -- Should only be called when
 --
 -- String.isEmpty cn.previous_text == True &&
 -- Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) == True
-deleteFromPreviousStyle : Model -> Model
-deleteFromPreviousStyle model =
+deleteAcrossStyles : ContentNavigation -> ContentNavigation
+deleteAcrossStyles cn =
   let
-      cn : ContentNavigation
-      cn = model.content_navigation
-
       new_content : Content
       new_content =
         if String.isEmpty cn.next_text then
@@ -448,89 +438,79 @@ deleteFromPreviousStyle model =
             |> Content.updateCurrentParagraph (Paragraph.removeCurrentStyle)
             |> Content.updateCurrentParagraph
                 (Paragraph.updateCurrentStyle
-                  (Style.updateText
+                  (Styles.updateText
                     (String.dropRight 1)))
         else
           cn.content
             |> Content.updateCurrentParagraph (Paragraph.selectPreviousStyle)
             |> Content.updateCurrentParagraph
                 (Paragraph.updateCurrentStyle
-                  (Style.updateText
+                  (Styles.updateText
                     (String.dropRight 1)))
 
       new_previous_text : String
       new_previous_text =
         new_content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.getText
-
-      new_cn : ContentNavigation
-      new_cn =
-        { cn
-            | content = new_content
-            , previous_text = new_previous_text
-            , next_text = ""
-        }
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.getText
   in
-      { model | content_navigation = new_cn }
+      { cn
+          | content = new_content
+          , previous_text = new_previous_text
+          , next_text = ""
+      }
 
 
 -- Should only be called when
 --
 -- String.isEmpty cn.previous_text == False
-deleteFromStyle : Model -> Model
-deleteFromStyle model =
+deleteText : ContentNavigation -> ContentNavigation
+deleteText cn =
   let
-      cn : ContentNavigation
-      cn = model.content_navigation
-
       new_previous_text : String
       new_previous_text =
         String.dropRight 1 cn.previous_text
 
       combined_text : String
       combined_text =
-        new_previous_text + cn.next_text
+        new_previous_text ++ cn.next_text
 
       new_content : Content
       new_content =
         cn.content
           |> Content.updateCurrentParagraph
               (Paragraph.updateCurrentStyle
-                (Style.setText combined_text))
-
-      new_cn : ContentNavigation
-      new_cn =
-        { cn
-            | content = new_content
-            , previous_text = new_previous_text
-            , next_text = cn.next_text
-        }
+                (Styles.setText combined_text))
   in
-      { model | content_navigation = new_cn }
+      { cn
+          | content = new_content
+          , previous_text = new_previous_text
+          , next_text = cn.next_text
+      }
 
 
 newParagraph : Model -> Model
 newParagraph model =
   let
-      cn = ContentNavigation
+      cn : ContentNavigation
       cn = model.content_navigation
 
       last_style : Style
       last_style =
         cn.content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.setText cn.previous_text
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.setText cn.previous_text
 
       first_style : Style
       first_style =
-        Style.setText cn.next_text last_style
+        Styles.setText cn.next_text last_style
 
       next_styles : List Style
       next_styles =
-        Content.currentParagraph
+        cn.content
+          |> Content.currentParagraph
           |> Paragraph.nextStyles
 
       new_content : Content
@@ -584,22 +564,22 @@ toggleModelStyle model toggleStyle =
       current_style =
         cn.content
           |> Content.currentParagraph
-          |> Paragraph.currentStyleWithDefault Style.empty
-          |> Style.setText ""
-          
+          |> Paragraph.currentStyleWithDefault Styles.empty
+          |> Styles.setText ""
+
       left_style : Maybe Style
       left_style =
         if String.isEmpty cn.previous_text then
           Nothing
         else
-          Just (Style.setText cn.previous_text current_style)
+          Just (Styles.setText cn.previous_text current_style)
 
       right_style : Maybe Style
       right_style =
         if String.isEmpty cn.next_text then
           Nothing
         else
-          Just (Style.setText cn.next_text current_style)
+          Just (Styles.setText cn.next_text current_style)
 
       new_current_style : Style
       new_current_style =
@@ -638,7 +618,7 @@ view model =
         cn.content
           |> Content.toList
           |> List.map Paragraph.toList
-          |> List.map (p [] (List.map (Style.render)))
+          |> List.map (\paragraph -> p [] (List.map (Styles.render) paragraph))
   in
       div []
         [ div []

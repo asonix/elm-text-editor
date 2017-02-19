@@ -16,7 +16,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module ZipList exposing
     (ZipList, shiftBack, shiftForward, toStart, toEnd,
-    insertBefore, insertAfter, removeCurrentForward, removeCurrentBack
+    insertBefore, insertAfter, removeCurrentForward, removeCurrentBack,
     toList, fromList, current, setCurrent, init,
     canShiftBack, canShiftForward, merge)
 
@@ -100,7 +100,7 @@ insertBefore elem (ZipList {default_value, maybe_zip_list}) =
 {-| insertAfter puts a new item in the ZipList before the current item
 -}
 insertAfter : a -> ZipList a -> ZipList a
-insertAfter elem (ZipList {previous, current, next}) =
+insertAfter elem (ZipList {default_value, maybe_zip_list}) =
   ZipList
     { maybe_zip_list = MaybeZipList.insertAfter (Just elem) maybe_zip_list
     , default_value = default_value
@@ -186,14 +186,14 @@ canShiftBack (ZipList {maybe_zip_list}) =
 
 {-| Returns true if current isn't at the end
 -}
-canShiftForward : MaybeZipList a -> Bool
+canShiftForward : ZipList a -> Bool
 canShiftForward (ZipList {maybe_zip_list}) =
   MaybeZipList.canShiftForward maybe_zip_list
 
 
 {-| Merges current ZipList with another
 -}
-merge : ZipList a -> ZipList b -> ZipList c
+merge : ZipList a -> ZipList a -> ZipList a
 merge (ZipList {default_value, maybe_zip_list}) (ZipList two) =
   ZipList
     { maybe_zip_list = MaybeZipList.merge maybe_zip_list two.maybe_zip_list

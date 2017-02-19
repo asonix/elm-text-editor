@@ -23,8 +23,9 @@ module Styles exposing
 {-|
 @docs Style
 
-@docs setLinkHref, setText, appendText, toggleCode, toggleImage, toggleStrike
-@docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
+@docs setLinkHref, setText, updateText, appendText
+@docs toggleCode, toggleImage, toggleStrike, toggleUnderline
+@docs toggleItalic, toggleBold, toggleHeading, toggleLink
 @docs serializeToString, render, isEmpty, getText, setMouseoverText
 @docs toggleText, empty
 -}

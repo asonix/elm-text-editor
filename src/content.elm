@@ -35,6 +35,7 @@ module Content exposing
 
 import Paragraph exposing (..)
 import ZipList exposing (..)
+import Styles exposing (Style)
 
 
 {-| Content is an alias for List Paragraph

@@ -108,4 +108,4 @@ examples:
 
 -}
 dropHead : List a -> List a
-dropHead = drop 1
+dropHead = List.drop 1

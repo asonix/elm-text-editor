@@ -64,7 +64,7 @@ empty = MaybeZipList.empty
 
 examples:
 
-  > isEmpty (ZipList.fromList [Style.empty])
+  > isEmpty (ZipList.fromList [Styles.empty])
   False
 
   > isEmpty (ZipList.fromList [])
@@ -79,8 +79,8 @@ isEmpty = MaybeZipList.isEmpty
 
 examples:
 
-  > last (ZipList.fromList [Style.empty])
-  Just (Style.empty)
+  > last (ZipList.fromList [Styles.empty])
+  Just (Styles.empty)
 
   > last (ZipList.fromList [])
   Nothing
@@ -96,15 +96,18 @@ if the paragraph is Nothing, return the default
 
 examples:
 
-  > lastWithDefault defaultStyle (ZipList.fromList [Style.empty])
-  Style.empty
+  > lastWithDefault defaultStyle (ZipList.fromList [Styles.empty])
+  Styles.empty
 
   > lastWithDefault defaultStyle (ZipList.fromList [])
   defaultStyle
 
 -}
 lastWithDefault : Style -> Paragraph -> Style
-lastWithDefault = Util.fromMaybeWithDefault (last)
+lastWithDefault style paragraph =
+  paragraph
+    |> last
+    |> Util.fromMaybeWithDefault identity style
 
 
 {-| Shift currentStyle to Start
@@ -128,7 +131,10 @@ currentStyle = MaybeZipList.current
 {-| get the current style with a default fallback
 -}
 currentStyleWithDefault : Style -> Paragraph -> Style
-currentStyleWithDefault = Util.fromMaybeWithDefault (currentStyle)
+currentStyleWithDefault style paragraph =
+  paragraph
+    |> currentStyle
+    |> Util.fromMaybeWithDefault identity style
 
 
 {-| set the current style
@@ -167,7 +173,7 @@ updateCurrentStyle : (Style -> Style) -> Paragraph -> Paragraph
 updateCurrentStyle fn paragraph =
   paragraph
     |> currentStyle
-    |> Util.fromMaybeWithDefault identity Style.empty
+    |> Util.fromMaybeWithDefault identity Styles.empty
     |> fn
     |> flip (setCurrentStyle) paragraph
 
