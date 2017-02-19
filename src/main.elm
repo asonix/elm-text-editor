@@ -1,5 +1,5 @@
 {-
-Copyright (C) 2016  Riley Trautman
+Copyright (C) 2017  Riley Trautman
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,10 +27,11 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import String exposing (..)
 import Styles exposing (..)
+import Paragraph exposing (..)
+import Content exposing (..)
 import Keys exposing (..)
-import Array exposing (..)
 import Keyboard
-import Debug
+-- import Debug
 
 
 -- MAIN
@@ -52,18 +53,10 @@ main =
 
 -- MODEL
 
-type alias Paragraph = List Style
-type alias Content = List Paragraph
-
-
 type alias ContentNavigation =
-  { previous_paragraphs : Content
-  , previous_styles : Paragraph
-  , current_style : Style
+  { content : Content
   , previous_text : String
   , next_text : String
-  , next_styles : Paragraph
-  , next_paragraphs : Content
   }
 
 
@@ -75,13 +68,9 @@ type alias Model =
 
 defaultContentNavigation : ContentNavigation
 defaultContentNavigation =
-  { previous_paragraphs = []
-  , previous_styles = []
-  , current_style = defaultStyle
+  { content = Content.init
   , previous_text = ""
   , next_text = ""
-  , next_styles = []
-  , next_paragraphs = []
   }
 
 -- INIT
@@ -189,14 +178,25 @@ keydown model key_code =
           (model, Cmd.none)
 
 
+currentParagraph : ContentNavigation -> Paragraph
+currentParagraph cn = Content.currentParagraph cn.content
+
+
+shiftLeft : (String -> String -> (String, String))
+shiftLeft previous next =
+  (String.dropRight 1 previous, (String.right 1 previous) ++ next)
+
+
+shiftRight : (String -> String -> (String, String))
+shiftRight previous next =
+  (previous ++ (String.left 1 next), String.dropLeft 1 next)
+
+
 moveLeftThroughText : ContentNavigation -> ContentNavigation
 moveLeftThroughText cn =
   let
-      new_previous =
-        String.dropRight 1 cn.previous_text
-
-      new_next =
-        (String.right 1 cn.previous_text) ++ cn.next_text
+      new_previous, new_next =
+        shiftLeft cn.previous_text cn.next_text
   in
       { cn
           | previous_text = new_previous
@@ -204,84 +204,109 @@ moveLeftThroughText cn =
       }
 
 
-moveLeftThroughStyles : ContentNavigation -> ContentNavigation
-moveLeftThroughStyles cn =
+moveRightThroughText : ContentNavigation -> ContentNavigation
+moveRightThroughText cn =
   let
-      new_previous_styles =
-        List.take
-          (List.length cn.previous_styles - 1)
-          cn.previous_styles
-
-      new_current_style =
-        cn.previous_styles
-          |> List.reverse
-          |> List.head
-          |> fromMaybeWithDefault identity defaultStyle
-
-      new_current_style_text =
-        getText new_current_style
-
-      new_previous_text =
-        String.dropRight 1 new_current_style_text
-
-      new_next_text =
-        String.right 1 new_current_style_text
-
-      new_next_styles =
-        cn.current_style :: cn.next_styles
+      new_previous, new_next =
+        shiftRight cn.previous_text cn.next_text
   in
       { cn
-          | previous_styles = new_previous_styles
-          , current_style = new_current_style
-          , previous_text = new_previous_text
-          , next_text = new_next_text
-          , next_styles = new_next_styles
+          | previous_text = new_previous
+          , next_text = new_next
       }
 
 
-moveLeftThroughParagraphs : ContentNavigation -> ContentNavigation
-moveLeftThroughParagraphs cn =
+moveLeftThroughParagraph : ContentNavigation -> ContentNavigation
+moveLeftThroughParagraph cn =
   let
-      new_previous_paragraphs =
-        List.take
-          (List.length cn.previous_paragraphs - 1)
-          cn.previous_paragraphs
+      content : Content
+      content =
+        Content.updateParagraph (Paragraph.selectPreviousStyle) cn.content
 
-      new_current_paragraph =
-        cn.previous_paragraphs
-          |> List.reverse
-          |> List.head
-          |> fromMaybeWithDefault identity []
-
-      new_previous_styles =
-        List.take
-          (List.length new_current_paragraph - 1)
-          new_current_paragraph
-
-      new_current_style =
-        new_current_paragraph
-          |> List.reverse
-          |> List.head
-          |> fromMaybeWithDefault identity defaultStyle
-
-      new_previous_text =
-        getText new_current_style
-
-      new_next_text = ""
-
-      new_next_styles = []
-
-      new_next_paragraphs =
-        (cn.current_style :: cn.next_styles) :: cn.next_paragraphs
+      new_previous_text, new_next_text =
+        content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.getText
+          |> flip (shiftLeft) ""
   in
       { cn
-          | previous_paragraphs = new_previous_paragraphs
-          , previous_styles = new_previous_styles
-          , current_style = new_current_style
+          | content = content
           , previous_text = new_previous_text
           , next_text = new_next_text
-          , next_styles = new_next_styles
-          , next_paragraphs = new_next_paragraphs
+      }
+
+
+moveRightThroughParagraph : ContentNavigation -> ContentNavigation
+moveRightThroughParagraph cn =
+  let
+      content : Content
+      content =
+        Content.updateParagraph (Paragraph.selectNextStyle) cn.content
+
+      new_previous_text, new_next_text =
+        content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.getText
+          |> shiftRight ""
+  in
+      { cn
+          | content = content
+          , previous_text = new_previous_text
+          , next_text = new_next_text
+      }
+
+
+moveLeftThroughContent : ContentNavigation -> ContentNavigation
+moveLeftThroughContent cn =
+  let
+      content : Content
+      content =
+        cn.content
+          |> Content.selectPreviousParagraph
+          |> Content.updateParagraph (Paragraph.toEnd)
+
+      new_previous_text : String
+      new_previous_text =
+        content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.getText
+
+      new_next_text : String
+      new_next_text = ""
+  in
+      { cn
+          | content = content
+          , previous_text = new_previous_text
+          , next_text = new_next_text
+      }
+
+
+moveRightThroughContent : ContentNavigation -> ContentNavigation
+moveRightThroughContent cn =
+  let
+      content : Content
+      content =
+        cn.content
+          |> Content.selectNextParagraph
+          |> Content.updateParagraph (Paragraph.toStart)
+
+      new_previous_text : String
+      new_previous_text = ""
+
+      new_next_text : String
+      new_next_text =
+        content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.getText
+  in
+      { cn
+          | content = content
+          , previous_text = new_previous_text
+          , next_text = new_next_text
       }
 
 
@@ -289,22 +314,36 @@ moveLeft : Model -> Model
 moveLeft model =
   let
       cn = model.content_navigation
-
-      shift_text = not (String.isEmpty cn.next_text)
-
-      shift_styles = not (List.isEmpty cn.previous_styles)
-
-      shift_paragraphs = not (List.isEmpty cn.previous_paragraphs)
   in
-      case (shift_text, shift_styles, shift_paragraphs) of
-        (True, _, _) ->
-          { model | content_navigation = moveLeftThroughText cn }
+      if not (String.isEmpty cn.next_text) then
+        { model | content_navigation = moveLeftThroughText cn }
 
-        (False, True, _) ->
-          { model | content_navigation = moveLeftThroughStyles cn }
+      else if Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) then
+        { model | content_navigation = moveLeftThroughParagraph cn }
 
-        (False, False, True) ->
-          { model | content_navigation = moveLeftThroughParagraphs cn }
+      else if (Content.hasPreviousParagraph cn.content) then
+        { model | content_navigation = moveLeftThroughContent cn }
+
+      else
+        model
+
+
+moveRight : Model -> Model
+moveRight model =
+  let
+      cn = model.content_navigation
+  in
+      if not (String.isEmpty cn.previous_text) then
+        { model | content_navigation = moveRightThroughText cn }
+
+      else if Paragraph.hasNextStyle (Content.currentParagraph cn.content) then
+        { model | content_navigation = moveRightThroughParagraph cn }
+
+      else if (Content.hasNextParagraph cn.content) then
+        { model | content_navigation = moveRightThroughContent cn }
+
+      else
+        model
 
 
 findGreaterCharCount : Int -> Style -> (Int, Int) -> (Int, Int)
@@ -502,32 +541,6 @@ inputToContent input model =
 
           Nothing ->
             model
-
-
-fromMaybe : (a -> Maybe b) -> Maybe a -> Maybe b
-fromMaybe fn = fromMaybeWithDefault fn Nothing
-
-
-fromMaybeWithDefault : (a -> b) -> b -> Maybe a -> b
-fromMaybeWithDefault fn default maybe_item =
-  case maybe_item of
-    Just item ->
-      fn item
-
-    Nothing ->
-      default
-
-
-fromTwoMaybes : (a -> b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
-fromTwoMaybes fn = fromTwoMaybesWithDefault fn Nothing
-
-
-fromTwoMaybesWithDefault : (a -> b -> c) -> c -> Maybe a -> Maybe b -> c
-fromTwoMaybesWithDefault fn default maybe_one maybe_two =
-  fromMaybeWithDefault
-    (\x -> fromMaybeWithDefault (fn x) default maybe_two)
-    default
-    maybe_one
 
 
 delete : Model -> Model
