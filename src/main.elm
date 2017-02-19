@@ -181,10 +181,6 @@ keydown model key_code =
           (model, Cmd.none)
 
 
-currentParagraph : ContentNavigation -> Paragraph
-currentParagraph cn = Content.currentParagraph cn.content
-
-
 shiftLeft : (String -> String -> (String, String))
 shiftLeft previous next =
   (String.dropRight 1 previous, (String.right 1 previous) ++ next)

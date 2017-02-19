@@ -166,16 +166,16 @@ shiftForward (MaybeZipList {previous, current, next}) =
 
 examples:
 
-  toStart (MaybeZipList {[3, 2, 1], Just 4, [5, 6]})
+  > toStart (MaybeZipList {[3, 2, 1], Just 4, [5, 6]})
   MaybeZipList {[], Just 1, [2, 3, 4, 5, 6]}
 
-  toStart (MaybeZipList {[], Just 1, []})
+  > toStart (MaybeZipList {[], Just 1, []})
   MaybeZipList {[], Just 1, []}
 
-  toStart (MaybeZipList {[3, 2, 1], Nothing, [5, 6]})
+  > toStart (MaybeZipList {[3, 2, 1], Nothing, [5, 6]})
   MaybeZipList {[], Just 1, [2, 3, 5, 6]}
 
-  toStart (MaybeZipList {[], Nothing, []})
+  > toStart (MaybeZipList {[], Nothing, []})
   MaybeZipList {[], Nothing, []}
 
 -}
@@ -218,16 +218,16 @@ toStart (MaybeZipList {previous, current, next}) =
 
 examples:
 
-  toEnd (MaybeZipList {[3, 2, 1], 4, [5, 6]})
+  > toEnd (MaybeZipList {[3, 2, 1], 4, [5, 6]})
   MaybeZipList {[5, 4, 3, 2, 1], 6, []}
 
-  toEnd (MaybeZipList {[], 1, []})
+  > toEnd (MaybeZipList {[], 1, []})
   MaybeZipList {[], 1, []}
 
-  toEnd (MaybeZipList {[3, 2, 1], Nothing, [5, 6]})
+  > toEnd (MaybeZipList {[3, 2, 1], Nothing, [5, 6]})
   MaybeZipList {[5, 3, 2, 1], 6, []}
 
-  toEnd (MaybeZipList {[], Nothing, []})
+  > toEnd (MaybeZipList {[], Nothing, []})
   MaybeZipList {[], Nothing, []}
 
 -}
