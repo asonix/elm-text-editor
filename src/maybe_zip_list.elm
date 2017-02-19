@@ -18,7 +18,8 @@ module MaybeZipList exposing
     (MaybeZipList, shiftBack, shiftForward, toStart, toEnd,
     insertBefore, insertAfter, removeCurrentForward, removeCurrentBack
     toList, fromList, current, setCurrent, empty, isEmpty,
-    canShiftBack, canShiftForward)
+    canShiftBack, canShiftForward, merge, next, previous,
+    deleteNext, deletePrevious)
 
 {-|
 @docs MaybeZipList
@@ -29,6 +30,8 @@ module MaybeZipList exposing
 @docs current, setCurrent
 @docs empty, isEmpty
 @docs canShiftBack, canShiftForward
+@docs merge
+@docs next, previous, deleteNext, deletePrevious
 -}
 
 {-| MaybeZipLists are useful for ensuring a list can only ever
@@ -561,3 +564,50 @@ canShiftBack (MaybeZipList {previous}) =
 canShiftForward : MaybeZipList a -> Bool
 canShiftForward (MaybeZipList {next}) =
   not (List.isEmpty next)
+
+
+{-| Merges the current MaybeZipList with another
+
+This merge preserves the current selection of the first MaybeZipList
+-}
+merge : MaybeZipList a -> MaybeZipList a -> MaybeZipList a
+merge (MaybeZipList {previous, current, next}) two =
+  MaybeZipList
+    { previous = previous
+    , current = current
+    , next = next ++ (toList two)
+    }
+
+
+{-| Get the next items after the current
+-}
+next : MaybeZipList a -> List a
+next (MaybeZipList {next}) = next
+
+
+{-| Get the previous items before the current
+-}
+previous : MaybeZipList a -> List a
+previous (MaybeZipList {previous}) = List.reverse previous
+
+
+{-| Remove the items after current
+-}
+deleteNext : MaybeZipList a -> MaybeZipList a
+deleteNext (MaybeZipList {previous, current}) =
+  MaybeZipList
+    { previous = previous
+    , current = current
+    , next = []
+    }
+
+
+{-| Remove the items before current
+-}
+deletePrevious : MaybeZipList a -> MaybeZipList a
+deletePrevious (MaybeZipList {current, next}) =
+  MaybeZipList
+    { previous = []
+    , current = current
+    , next = next
+    }

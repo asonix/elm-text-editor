@@ -19,7 +19,10 @@ module Paragraph exposing
     currentStyle, currentStyleWithDefault, setCurrentStyle,
     selectPreviousStyle, selectNextStyle,
     hasPreviousStyle, hasNextStyle,
-    updateCurrentStyle)
+    updateCurrentStyle, merge,
+    removeCurrentStyle, nextStyles, previousStyles,
+    clearNextStyles, clearPreviousStyles,
+    toList, fromList, insertBefore, insertAfter)
 
 {-|
 @docs Paragraph
@@ -28,6 +31,10 @@ module Paragraph exposing
 @docs selectPreviousStyle, selectNextStyle
 @docs hasPreviousStyle, hasNextStyle
 @docs updateParagraph
+@docs merge
+@docs nextStyles, previousStyles, clearNextStyles, clearPreviousStyles
+@docs toList, fromList
+@docs insertBefore, insertAfter
 -}
 
 
@@ -163,3 +170,63 @@ updateCurrentStyle fn paragraph =
     |> Util.fromMaybeWithDefault identity Style.empty
     |> fn
     |> flip (setCurrentStyle) paragraph
+
+
+{-| Merge paragraphs
+-}
+merge : Paragraph -> Paragraph -> Paragraph
+merge p1 p2 = MaybeZipList.merge (toEnd p1) p2
+
+
+{-| Remove the current style from the paragraph. Move previous style to current
+-}
+removeCurrentStyle : Paragraph -> Paragraph
+removeCurrentStyle = MaybeZipList.removeCurrentBack
+
+
+{-| Get the styles after current
+-}
+nextStyles : Paragraph -> List Style
+nextStyles = MaybeZipList.next
+
+
+{-| Get the styles before current
+-}
+previousStyles : Paragraph -> List Style
+previousStyles = MaybeZipList.previous
+
+
+{-| Remove styles after current
+-}
+clearNextStyles : Paragraph -> Paragraph
+clearNextStyles = MaybeZipList.deleteNext
+
+
+{-| Remove styles before current
+-}
+clearPreviousStyles : Paragraph -> Paragraph
+clearPreviousStyles = MaybeZipList.deletePrevious
+
+
+{-| Make a paragraph from a list
+-}
+fromList : List Style -> Paragraph
+fromList = MaybeZipList.fromList
+
+
+{-| Make a list from a Paragraph
+-}
+toList : Paragraph -> List Style
+toList = MaybeZipList.toList
+
+
+{-| Insert a style before the current style and select it
+-}
+insertBefore : Maybe Style -> Paragraph -> Paragraph
+insertBefore = MaybeZipList.insertBefore
+
+
+{-| Insert a style after the current style and select it
+-}
+insertAfter : Maybe Style -> Paragraph -> Paragraph
+insertAfter = MaybeZipList.insertAfter

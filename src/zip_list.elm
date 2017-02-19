@@ -18,7 +18,7 @@ module ZipList exposing
     (ZipList, shiftBack, shiftForward, toStart, toEnd,
     insertBefore, insertAfter, removeCurrentForward, removeCurrentBack
     toList, fromList, current, setCurrent, init,
-    canShiftBack, canShiftForward)
+    canShiftBack, canShiftForward, merge)
 
 {-|
 @docs ZipList
@@ -29,6 +29,7 @@ module ZipList exposing
 @docs current, setcurrent
 @docs init
 @docs canShiftBack, canShiftForward
+@docs merge
 -}
 
 
@@ -188,3 +189,13 @@ canShiftBack (ZipList {maybe_zip_list}) =
 canShiftForward : MaybeZipList a -> Bool
 canShiftForward (ZipList {maybe_zip_list}) =
   MaybeZipList.canShiftForward maybe_zip_list
+
+
+{-| Merges current ZipList with another
+-}
+merge : ZipList a -> ZipList b -> ZipList c
+merge (ZipList {default_value, maybe_zip_list}) (ZipList two) =
+  ZipList
+    { maybe_zip_list = MaybeZipList.merge maybe_zip_list two.maybe_zip_list
+    , default_value = default_value
+    }

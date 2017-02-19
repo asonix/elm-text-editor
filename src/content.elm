@@ -18,7 +18,8 @@ module Content exposing
     (Content, init, currentParagraph, setCurrentParagraph,
     selectNextParagraph, selectPreviousParagraph,
     hasNextParagraph, hasPreviousParagraph,
-    updateCurrentParagraph)
+    updateCurrentParagraph, mergeWithPreviousParagraph,
+    insertParagraph, toList)
 
 {-|
 @docs Content
@@ -26,6 +27,9 @@ module Content exposing
 @docs selectNextParagraph, selectPreviousParagraph
 @docs hasNextParagraph, hasPreviousParagraph
 @docs updateCurrentParagraph
+@docs mergeWithPreviousParagraph
+@docs insertParagraph
+@docs toList
 -}
 
 
@@ -52,7 +56,7 @@ currentParagraph = ZipList.current
 
 {-| Set the current paragraph
 -}
-setCurrentParagraph : Paragraph -> Content -> Paragraph
+setCurrentParagraph : Paragraph -> Content -> Content
 setCurrentParagraph = ZipList.setCurrent
 
 
@@ -88,3 +92,40 @@ updateCurrentParagraph fn content =
     |> currentParagraph
     |> fn
     |> flip (setCurrent) content
+
+
+{-| Merge the current and previous paragraphs
+-}
+mergeWithPreviousParagraph : Content -> Content
+mergeWithPreviousParagraph content =
+  let
+      p1 : Paragraph
+      p1 =
+        content
+          |> selectPreviousParagraph
+          |> currentParagraph
+
+      p2 : Paragraph
+      p2 =
+        content
+          |> currentParagraph
+
+      merged : Paragraph
+      merged =
+        Paragraph.merge p1 p2
+  in
+      content
+        |> ZipList.removeCurrentBack
+        |> setCurrentParagraph merged
+
+
+{-| Insert a new paragraph after the current paragraph and select it
+-}
+insertParagraph : List Style -> Content -> Content
+insertParagraph = ZipList.insertAfter << Paragraph.fromList
+
+
+{-| Make a List of Paragraphs from a Content
+-}
+toList : Content -> List Paragraph
+toList = ZipList.toList

@@ -63,6 +63,7 @@ type alias ContentNavigation =
 type alias Model =
   { content_navigation : ContentNavigation
   , mods : Modifiers
+  , input : String
   }
 
 
@@ -136,13 +137,15 @@ keydown model key_code =
           (moveLeft model, Cmd.none)
 
         Just Up ->
-          (moveUp model, Cmd.none)
+          -- (moveUp model, Cmd.none)
+          (model, Cmd.none)
 
         Just Right ->
           (moveRight model, Cmd.none)
 
         Just Down ->
-          (moveDown model, Cmd.none)
+          -- (moveDown model, Cmd.none)
+          (model, Cmd.none)
 
         Just NewLine ->
           (model, Cmd.none)
@@ -315,7 +318,7 @@ moveLeft model =
   let
       cn = model.content_navigation
   in
-      if not (String.isEmpty cn.next_text) then
+      if not (String.isEmpty cn.previous_text) then
         { model | content_navigation = moveLeftThroughText cn }
 
       else if Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) then
@@ -346,497 +349,206 @@ moveRight model =
         model
 
 
-findGreaterCharCount : Int -> Style -> (Int, Int) -> (Int, Int)
-findGreaterCharCount count style (char_count, index) =
-  let
-      current_count : Int
-      current_count =
-        style
-          |> getText
-          |> String.length
-          |> (+) char_count
-  in
-      if current_count <= count then
-        (current_count, index + 1)
-
-      else
-        (char_count, index)
-
-
-moveVertical : Int -> Model -> Model
-moveVertical distance model =
-  let
-      cursor : Cursor
-      cursor = model.cursor
-
-      maybe_paragraph_and_style : Maybe (Paragraph, Style)
-      maybe_paragraph_and_style =
-        getStyleFromContent model.content cursor.paragraph cursor.style
-
-      current_style_length : Int
-      current_style_length =
-        maybe_paragraph_and_style
-          |> fromMaybeWithDefault (String.length << getText << Tuple.second) 0
-
-      char_count : Int
-      char_count =
-        case maybe_paragraph_and_style of
-          Just (paragraph, _) ->
-            List.range 0 cursor.style
-              |> List.map (flip (Array.get) paragraph)
-              |> List.map (fromMaybe (Just << getText))
-              |> List.map (fromMaybeWithDefault (String.length) 0)
-              |> List.sum
-              |> flip (-) (current_style_length - cursor.character)
-
-          Nothing ->
-            0
-
-      maybe_previous_paragraph : Maybe Paragraph
-      maybe_previous_paragraph =
-        Array.get (cursor.paragraph + distance) model.content
-
-      -- previous_char_count : Int
-      -- previous_style_index : Int
-      (previous_char_count, previous_style_index) =
-        case maybe_previous_paragraph of
-          Just previous_paragraph ->
-            previous_paragraph
-              |> Array.foldl (findGreaterCharCount char_count) (0, -1)
-
-          Nothing ->
-            (0, -1)
-
-      maybe_new_style : Maybe Style
-      maybe_new_style =
-        maybe_previous_paragraph
-          |> fromMaybe (Array.get (previous_style_index + 1))
-
-      maybe_previous_style : Maybe Style
-      maybe_previous_style =
-        maybe_previous_paragraph
-          |> fromMaybe (Array.get previous_style_index)
-
-      updated_cursor : Cursor
-      updated_cursor =
-        case (maybe_new_style, maybe_previous_style) of
-          (Just new_style, _) ->
-            { cursor
-                | paragraph = cursor.paragraph + distance
-                , style = previous_style_index + 1
-                , character = char_count - previous_char_count
-            }
-
-          (Nothing, Just previous_style) ->
-            { cursor
-                | paragraph = cursor.paragraph + distance
-                , style = previous_style_index
-                , character = String.length (getText previous_style)
-            }
-
-          (Nothing, Nothing) ->
-            cursor
-  in
-      { model | cursor = updated_cursor }
-
-
-moveUp : Model -> Model
-moveUp = moveVertical (-1)
-
-
-moveRight : Model -> Model
-moveRight model =
-  let
-      cursor : Cursor
-      cursor = model.cursor
-
-      maybe_paragraph_and_style : Maybe (Paragraph, Style)
-      maybe_paragraph_and_style =
-        getStyleFromContent
-          model.content
-          cursor.paragraph
-          cursor.style
-
-      within_style : Bool
-      within_style =
-        maybe_paragraph_and_style
-          |> fromMaybe (Just << String.length << getText << Tuple.second)
-          |> fromMaybeWithDefault ((<=) (cursor.character + 1)) False
-
-      within_paragraph : Bool
-      within_paragraph =
-        maybe_paragraph_and_style
-          |> fromMaybe (Array.get (cursor.style + 1) << Tuple.first)
-          |> fromMaybe (Just << String.length << getText)
-          |> fromMaybeWithDefault ((<) 0) False
-
-      next_paragraph : Bool
-      next_paragraph =
-        model.content
-          |> Array.get (cursor.paragraph + 1)
-          |> fromMaybeWithDefault (\_ -> True) False
-
-      updated_cursor : Cursor
-      updated_cursor =
-        case (within_style, within_paragraph, next_paragraph) of
-          (True, _, _) ->
-            { cursor
-                | character = cursor.character + 1
-            }
-
-          (False, True, _) ->
-            { cursor
-                | character = 1
-                , style = cursor.style + 1
-            }
-
-          (False, False, True) ->
-            { cursor
-                | character = 0
-                , style = 0
-                , paragraph = cursor.paragraph + 1
-            }
-
-          (False, False, False) ->
-            cursor
-  in
-      { model | cursor = updated_cursor }
-
-
-moveDown : Model -> Model
-moveDown = moveVertical 1
-
-
 inputToContent : String -> Model -> Model
 inputToContent input model =
-    let
-        cursor : Cursor
-        cursor = model.cursor
+  let
+      cn : ContentNavigation
+      cn = model.content_navigation
 
-        insertString : Int -> String -> String -> String
-        insertString index item string =
-          (String.left index string) ++ item ++ (String.dropLeft index string)
+      new_previous_text : String
+      new_previous_text =
+        cn.previous_text ++ input
 
-        insertText : Int -> String -> Style -> Style
-        insertText index item style =
-          style
-            |> getText
-            |> insertString index item
-            |> flip (updateText) style
+      combined_text : String
+      combined_text =
+        new_previous_text ++ cn.next_text
 
-        maybe_updated_content : Maybe Content
-        maybe_updated_content =
-          modifyStyleInContent model.content cursor.paragraph cursor.style (insertText cursor.character input)
-    in
-        case maybe_updated_content of
-          Just updated_content ->
-            { model
-                | content = updated_content
-                , input = ""
-                , cursor =
-                    { cursor |
-                        character = cursor.character + String.length input
-                    }
-            }
+      content : Content
+      content =
+        Content.updateCurrentParagraph
+          (Paragraph.updateCurrentStyle
+            (Style.updateText combined_text))
+          cn.content
 
-          Nothing ->
-            model
+      new_cn : ContentNavigation
+      new_cn =
+        { cn
+          | content = content
+          , previous_text = new_previous_text
+          , next_text = cn.next_text
+        }
+  in
+      { model | content_navigation = new_cn }
 
 
 delete : Model -> Model
 delete model =
   let
-      cursor : (Int, Int, Int)
-      cursor =
-        ( model.cursor.paragraph
-        , model.cursor.style
-        , model.cursor.character
-        )
+      cn = model.content_navigation
   in
-      case cursor of
-        (0, 0, 0) -> -- paragraph, style, and character are 0
-          model
+      if not (String.isEmpty cn.previous_text) then
+        { model | content_navigation = deleteText cn }
 
-        (_, 0, 0) -> -- style and character are 0, paragraph is not 0
-          mergeParagraphs model
+      else if Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) then
+        { model | content_navigation = deleteAcrossStyles cn }
 
-        (_, _, 0) -> -- character is 0, style is not 0, paragraph is anything
-          deleteFromPreviousStyle model
-
-        _ -> -- character is not 0, style and paragraph are anything
-          deleteFromStyle model
-
-
--- Should only be called when model.cursor.style is 0
--- AND model.cursor.character is 0
-mergeParagraphs : Model -> Model
-mergeParagraphs model =
-  let
-      cursor : Cursor
-      cursor = model.cursor
-
-      maybe_previous_paragraph : Maybe Paragraph
-      maybe_previous_paragraph =
-        Array.get (cursor.paragraph - 1) model.content
-
-      maybe_merged_paragraphs : Maybe Paragraph
-      maybe_merged_paragraphs =
-        model.content
-          |> Array.get cursor.paragraph
-          |> fromTwoMaybes (curry (Just << uncurry Array.append)) maybe_previous_paragraph
-
-      updated_style_index : Int
-      updated_style_index =
-        maybe_previous_paragraph
-          |> fromMaybeWithDefault (flip (-) 1 << Array.length) 0
-          |> (+) 1
-
-      updateModel : Content -> Model
-      updateModel updated_content =
-        { model
-            | content = updated_content
-            , cursor =
-              { cursor
-                  | paragraph = cursor.paragraph - 1
-                  , style = updated_style_index
-                  , character = 0
-              }
-        }
-  in
-      if cursor.character == 0 && cursor.style == 0 then
-        case maybe_merged_paragraphs of
-          Just merged_paragraphs ->
-            model.content
-              |> Array.set (cursor.paragraph - 1) merged_paragraphs
-              |> delFromArray cursor.paragraph
-              |> updateModel
-
-          Nothing ->
-            model
+      else if (Content.hasPreviousParagraph cn.content) then
+        { model | content_navigation = deleteAcrossParagraphs cn }
 
       else
         model
 
 
-getStyleFromContent : Content -> Int -> Int -> Maybe (Paragraph, Style)
-getStyleFromContent content paragraph_index style_index =
+-- Should only be called when
+--
+-- String.isEmpty cn.previous_text == True &&
+-- Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) == False &&
+-- Content.hasPreviousParagraph cn.content == True
+deleteAcrossParagraphs : Model -> Model
+deleteAcrossParagraphs model =
   let
-      maybe_paragraph : Maybe Paragraph
-      maybe_paragraph =
-        Array.get paragraph_index content
+      cn : ContentNavigation
+      cn = model.content_navigation
 
-      maybe_style : Maybe Style
-      maybe_style =
-        maybe_paragraph
-          |> fromMaybe (Array.get style_index)
+      new_content : Content
+      new_content = mergeWithPreviousParagraph cn.content
+
+      new_previous_text : String
+      new_previous_text =
+        new_content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.getText
+
+      new_cn : ContentNavigation
+      new_cn =
+        { cn
+            | content = new_content
+            , previous_text = new_previous_text
+            , next_text = ""
+        }
   in
-      fromTwoMaybes (curry Just) maybe_paragraph maybe_style
+      { model | content_navigation = new_cn }
 
 
-setStyleInContent : Content -> Int -> Int -> Style -> Content
-setStyleInContent content paragraph_index style_index updated_style =
-  Array.get paragraph_index content
-    |> fromMaybe (Just << Array.set style_index updated_style)
-    |> fromMaybeWithDefault (flip (Array.set paragraph_index) content) content
-
-
-modifyStyleInContent : Content -> Int -> Int -> (Style -> Style) -> Maybe (Content)
-modifyStyleInContent content paragraph_index style_index fn =
-  getStyleFromContent content paragraph_index style_index
-    |> fromMaybe (Just << Tuple.second)
-    |> fromMaybe (Just << fn)
-    |> fromMaybe (Just << setStyleInContent content paragraph_index style_index)
-
-
-deleteCharFromString : Int -> String -> String
-deleteCharFromString index str =
-  String.left (index - 1) str ++ (String.dropLeft index str)
-
-
-deleteCharFromStyle : Int -> Style -> Style
-deleteCharFromStyle index style =
-  style
-    |> getText
-    |> deleteCharFromString index
-    |> (flip (updateText) style)
-
-
-getCurrentStyle : Model -> Style
-getCurrentStyle model =
-  (getStyleFromContent
-    model.content
-    model.cursor.paragraph
-    model.cursor.style)
-    |> fromMaybeWithDefault (Tuple.second) (Text "")
-
-
--- Should only be called when model.cursor.character is 0
--- AND when model.cursor.style is not 0
+-- Should only be called when
+--
+-- String.isEmpty cn.previous_text == True &&
+-- Paragraph.hasPreviousStyle (Content.currentParagraph cn.content) == True
 deleteFromPreviousStyle : Model -> Model
 deleteFromPreviousStyle model =
   let
-      cursor : Cursor
-      cursor = model.cursor
+      cn : ContentNavigation
+      cn = model.content_navigation
 
-      previous_style_index : Int
-      previous_style_index = cursor.style - 1
+      new_content : Content
+      new_content =
+        if String.isEmpty cn.next_text then
+          cn.content
+            |> Content.updateCurrentParagraph (Paragraph.removeCurrentStyle)
+            |> Content.updateCurrentParagraph
+                (Paragraph.updateCurrentStyle
+                  (Style.updateText
+                    (String.dropRight 1)))
+        else
+          cn.content
+            |> Content.updateCurrentParagraph (Paragraph.selectPreviousStyle)
+            |> Content.updateCurrentParagraph
+                (Paragraph.updateCurrentStyle
+                  (Style.updateText
+                    (String.dropRight 1)))
 
-      getStyleLength : Int -> Int
-      getStyleLength =
-        fromMaybeWithDefault (String.length << getText << Tuple.second) 0
-          << getStyleFromContent model.content cursor.paragraph
+      new_previous_text : String
+      new_previous_text =
+        new_content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.getText
 
-      updated_cursor : Cursor
-      updated_cursor =
-        { cursor
-            | style = previous_style_index
-            , character = getStyleLength previous_style_index
+      new_cn : ContentNavigation
+      new_cn =
+        { cn
+            | content = new_content
+            , previous_text = new_previous_text
+            , next_text = ""
         }
-
-      updated_model : Model
-      updated_model =
-        case getStyleLength cursor.style of
-          0 ->
-            { model
-                | content =
-                  deleteStyleFromContent
-                    cursor.paragraph
-                    cursor.style
-                    model.content
-                , cursor = updated_cursor
-            }
-
-          _ ->
-            { model
-                | cursor = updated_cursor
-            }
   in
-      if cursor.character == 0 && cursor.style /= 0 then
-        deleteFromStyle updated_model
-
-      else
-        model
+      { model | content_navigation = new_cn }
 
 
--- Should only be called when model.cursor.character is not 0
+-- Should only be called when
+--
+-- String.isEmpty cn.previous_text == False
 deleteFromStyle : Model -> Model
 deleteFromStyle model =
   let
-      cursor : Cursor
-      cursor = model.cursor
+      cn : ContentNavigation
+      cn = model.content_navigation
 
-      updateModel : Content -> Model
-      updateModel updated_content =
-        { model
-            | content = updated_content
-            , cursor =
-              { cursor
-                  | character = cursor.character - 1
-              }
+      new_previous_text : String
+      new_previous_text =
+        String.dropRight 1 cn.previous_text
+
+      combined_text : String
+      combined_text =
+        new_previous_text + cn.next_text
+
+      new_content : Content
+      new_content =
+        cn.content
+          |> Content.updateCurrentParagraph
+              (Paragraph.updateCurrentStyle
+                (Style.setText combined_text))
+
+      new_cn : ContentNavigation
+      new_cn =
+        { cn
+            | content = new_content
+            , previous_text = new_previous_text
+            , next_text = cn.next_text
         }
   in
-      if cursor.character == 0 then
-        model
-
-      else
-        (modifyStyleInContent
-          model.content
-          cursor.paragraph
-          cursor.style
-          (deleteCharFromStyle cursor.character))
-          |> fromMaybeWithDefault (updateModel) model
+      { model | content_navigation = new_cn }
 
 
 newParagraph : Model -> Model
 newParagraph model =
   let
-      cursor : Cursor
-      cursor = model.cursor
+      cn = ContentNavigation
+      cn = model.content_navigation
 
-      maybe_paragraph_and_style : Maybe (Paragraph, Style)
-      maybe_paragraph_and_style =
-        getStyleFromContent model.content cursor.paragraph cursor.style
+      last_style : Style
+      last_style =
+        cn.content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.setText cn.previous_text
 
-      maybe_text : Maybe String
-      maybe_text =
-        maybe_paragraph_and_style
-          |> fromMaybe (Just << getText << Tuple.second)
+      first_style : Style
+      first_style =
+        Style.setText cn.next_text last_style
 
-      maybe_text_after : Maybe String
-      maybe_text_after =
-        maybe_text
-          |> fromMaybe (Just << String.dropLeft cursor.character)
+      next_styles : List Style
+      next_styles =
+        Content.currentParagraph
+          |> Paragraph.nextStyles
 
-      maybe_text_before : Maybe String
-      maybe_text_before =
-        case maybe_text of
-          Just text ->
-            case String.left cursor.character text of
-              "" ->
-                Nothing
+      new_content : Content
+      new_content =
+        cn.content
+          |> Content.updateCurrentParagraph (Paragraph.clearNextStyles)
+          |> Content.updateCurrentParagraph (Paragraph.setCurrentStyle last_style)
+          |> Content.insertParagraph (first_style::next_styles)
 
-              text ->
-                Just text
-
-          Nothing ->
-            Nothing
-
-      styleText : Maybe String -> Paragraph
-      styleText maybe_text =
-        fromTwoMaybesWithDefault
-          (curry (Array.repeat 1 << uncurry updateText))
-          Array.empty
-          maybe_text
-          (maybe_paragraph_and_style |> fromMaybe (Just << Tuple.second))
-
-      more_styles : Paragraph
-      more_styles =
-        case maybe_paragraph_and_style of
-          Just (paragraph, _) ->
-            Array.slice (cursor.style + 1) (Array.length paragraph) paragraph
-
-          Nothing ->
-            Array.empty
-
-      first_styles : Paragraph
-      first_styles =
-        maybe_paragraph_and_style
-          |> fromMaybeWithDefault (Array.slice 0 cursor.style << Tuple.first) Array.empty
-
-      defaultIfEmpty : Paragraph -> Paragraph
-      defaultIfEmpty array =
-        if Array.isEmpty array then
-          Array.fromList [updateText "" (getCurrentStyle model)]
-
-        else
-          array
-
-      new_paragraph : Paragraph
-      new_paragraph =
-        Array.empty
-          |> Array.append more_styles
-          |> Array.append (styleText maybe_text_after)
-          |> defaultIfEmpty
-
-      previous_paragraph : Paragraph
-      previous_paragraph =
-        Array.empty
-          |> Array.append (styleText maybe_text_before)
-          |> Array.append first_styles
-          |> defaultIfEmpty
+      new_cn : ContentNavigation
+      new_cn =
+        { cn
+            | content = new_content
+            , previous_text = ""
+            , next_text = cn.next_text
+        }
   in
-      { model
-          | content =
-            model.content
-              |> Array.push new_paragraph
-              |> Array.set cursor.paragraph previous_paragraph
-          , cursor =
-              { cursor
-                  | paragraph = cursor.paragraph + 1
-                  , style = 0
-                  , character = 0
-              }
-      }
+      { model | content_navigation = new_cn }
 
 
 keyup : Model -> Int -> (Model, Cmd Msg)
@@ -865,77 +577,52 @@ keyup model key_code =
 toggleModelStyle : Model -> (Style -> Style) -> Model
 toggleModelStyle model toggleStyle =
   let
-      cursor : Cursor
-      cursor = model.cursor
-
-      maybe_paragraph_and_style : Maybe (Paragraph, Style)
-      maybe_paragraph_and_style =
-        getStyleFromContent
-          model.content
-          cursor.paragraph
-          cursor.style
+      cn : ContentNavigation
+      cn = model.content_navigation
 
       current_style : Style
       current_style =
-        maybe_paragraph_and_style
-          |> fromMaybeWithDefault (Tuple.second) (Text "")
-
-      text : String
-      text = getText current_style
-
-      new_style : Style
-      new_style =
-        current_style
-          |> toggleStyle
-          |> (updateText "")
-
-      left_text : String
-      left_text =
-        String.left cursor.character text
-
-      right_text : String
-      right_text =
-        String.dropLeft cursor.character text
-
-      push_if_not_empty : String -> Paragraph -> Paragraph
-      push_if_not_empty string array =
-        if String.isEmpty string then
-          array
-
+        cn.content
+          |> Content.currentParagraph
+          |> Paragraph.currentStyleWithDefault Style.empty
+          |> Style.setText ""
+          
+      left_style : Maybe Style
+      left_style =
+        if String.isEmpty cn.previous_text then
+          Nothing
         else
-          Array.push (updateText string current_style) array
+          Just (Style.setText cn.previous_text current_style)
 
-      new_array : Paragraph
-      new_array =
-        Array.empty
-          |> push_if_not_empty left_text
-          |> Array.push new_style
-          |> push_if_not_empty right_text
+      right_style : Maybe Style
+      right_style =
+        if String.isEmpty cn.next_text then
+          Nothing
+        else
+          Just (Style.setText cn.next_text current_style)
 
-      updated_content : Content
-      updated_content =
-        case maybe_paragraph_and_style of
-          Just (paragraph, _) ->
-            Array.empty
-              |> Array.append (Array.slice (cursor.style+1) (Array.length paragraph) paragraph)
-              |> Array.append new_array
-              |> Array.append (Array.slice 0 (cursor.style) paragraph)
-              |> flip (Array.set cursor.paragraph) model.content
+      new_current_style : Style
+      new_current_style =
+        toggleStyle current_style
 
-          Nothing ->
-            model.content
-  in
-      if String.isEmpty left_text then
-        { model | content = updated_content }
-      else
-        { model
-            | content = updated_content
-            , cursor =
-                { cursor
-                    | style = cursor.style + 1
-                    , character = 0
-                }
+      new_content : Content
+      new_content =
+        cn.content
+          |> Content.updateCurrentParagraph (Paragraph.insertBefore left_style)
+          |> Content.updateCurrentParagraph (Paragraph.selectNextStyle)
+          |> Content.updateCurrentParagraph (Paragraph.insertAfter right_style)
+          |> Content.updateCurrentParagraph (Paragraph.selectPreviousStyle)
+          |> Content.updateCurrentParagraph (Paragraph.setCurrentStyle current_style)
+
+      new_cn : ContentNavigation
+      new_cn =
+        { cn
+            | content = new_content
+            , previous_text = ""
+            , next_text = ""
         }
+  in
+      { model | content_navigation = new_cn }
 
 
 -- VIEW
@@ -943,12 +630,15 @@ toggleModelStyle model toggleStyle =
 view : Model -> Html Msg
 view model =
   let
+      cn : ContentNavigation
+      cn = model.content_navigation
+
       serialized : List (Html Msg)
       serialized =
-        serializeContent
-          (p [])
-          (renderStyle)
-          (model.content)
+        cn.content
+          |> Content.toList
+          |> List.map Paragraph.toList
+          |> List.map (p [] (List.map (Style.render)))
   in
       div []
         [ div []
@@ -961,52 +651,24 @@ view model =
 
 showModel : Model -> Html Msg
 showModel model =
-  let
-      cursor : Cursor
-      cursor = model.cursor
-
-      serialized : List (Html Msg)
-      serialized =
-        serializeContent
-          (p [])
-          (text << serializeToString)
-          model.content
-  in
-      if debug then
-        div [ class "debug" ]
-          [ p []
-              [ text "ctrl: "
-              , text (if model.mods.ctrl then "True" else "False")
-              ]
-          , p []
-              [ text "alt: "
-              , text (if model.mods.alt then "True" else "False")
-              ]
-          , p []
-              [ text "shift: "
-              , text (if model.mods.shift then "True" else "False")
-              ]
-          , p []
-              [ text "cursor position: ("
-              , text (toString cursor.paragraph)
-              , text ", "
-              , text (toString cursor.style)
-              , text ", "
-              , text (toString cursor.character)
-              , text ")"
-              ]
-          , p []
-              [ text "input text: "
-              , text model.input
-              ]
-          , div []
-              [ text "all input data: "
-              , div [] serialized
-              ]
+  if debug then
+    div [ class "debug" ]
+      [ p []
+          [ text "ctrl: "
+          , text (if model.mods.ctrl then "True" else "False")
           ]
+      , p []
+          [ text "alt: "
+          , text (if model.mods.alt then "True" else "False")
+          ]
+      , p []
+          [ text "shift: "
+          , text (if model.mods.shift then "True" else "False")
+          ]
+      ]
 
-      else
-        text ""
+  else
+    text ""
 
 
 -- SUBSCRIPTIONS

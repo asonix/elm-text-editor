@@ -15,17 +15,17 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Styles exposing
-    (Style, setLinkHref, setText, appendText, toggleCode, toggleImage,
-    toggleText, toggleStrike, toggleUnderline, toggleItalic, toggleBold,
-    toggleHeading, toggleLink, serializeToString, renderStyle, isEmpty,
-    getText, setMouseoverText, empty)
+    (Style, setLinkHref, setText, updateText, appendText, toggleCode,
+    toggleImage, toggleText, toggleStrike, toggleUnderline, toggleItalic,
+    toggleBold, toggleHeading, toggleLink, serializeToString, render,
+    isEmpty, getText, setMouseoverText, empty)
 
 {-|
 @docs Style
 
 @docs setLinkHref, setText, appendText, toggleCode, toggleImage, toggleStrike
 @docs toggleUnderline, toggleItalic, toggleBold, toggleHeading, toggleLink
-@docs serializeToString, renderStyle, isEmpty, getText, setMouseoverText
+@docs serializeToString, render, isEmpty, getText, setMouseoverText
 @docs toggleText, empty
 -}
 
@@ -109,6 +109,22 @@ setText text (Style { link_wrapper }) =
   Style
     { link_wrapper = link_wrapper
     , text = text
+    }
+
+
+{-| Apply a function to modify the style's text
+
+examples :
+
+  > updateText (dropRight 1) (Style { _, "hello world" })
+  Style { _, "hello worl" }
+
+-}
+updateText : (String -> String) -> Style -> Style
+updateText fn (Style { link_wrapper, text }) =
+  Style
+    { link_wrapper = link_wrapper
+    , text = fn text
     }
 
 
@@ -557,8 +573,8 @@ serializeToString (Style { link_wrapper, text }) =
       "Style { Link " ++ href ++ " (" ++ (serializeStyleTypeToString style_type) ++ "), " ++ text ++ " }"
 
 
-renderStyleAttributes : StyleAttributes -> String -> Html msg
-renderStyleAttributes attributes str =
+renderAttributes : StyleAttributes -> String -> Html msg
+renderAttributes attributes str =
   let
       heading =
         if attributes.heading then
@@ -592,11 +608,11 @@ renderStyleAttributes attributes str =
   in
       strike
 
-renderStyleType : StyleType -> String -> Html msg
-renderStyleType style_type string =
+renderType : StyleType -> String -> Html msg
+renderType style_type string =
   case style_type of
     Text attributes ->
-      renderStyleAttributes attributes string
+      renderAttributes attributes string
 
     Image mouseover ->
       case mouseover of
@@ -618,10 +634,10 @@ of a helper function
 
 examples:
 
-  > renderStyle (Style { Only (Text {False, True, False, False, False}), "hello world" })
+  > render (Style { Only (Text {False, True, False, False, False}), "hello world" })
   b [] [ text "hello world" ]
 
-  > renderStyle (Style { Link "https://google.com" (Text {True, True, True, True, True}), "hello world" })
+  > render (Style { Link "https://google.com" (Text {True, True, True, True, True}), "hello world" })
   a [ href "https://google.com" ]
     [ h3 []
         [ b []
@@ -635,11 +651,11 @@ examples:
         ]
     ]
 -}
-renderStyle : Style -> Html msg
-renderStyle (Style { link_wrapper, text }) =
+render : Style -> Html msg
+render (Style { link_wrapper, text }) =
   case link_wrapper of
     Only style_type ->
-      renderStyleType style_type text
+      renderType style_type text
 
     Link url style_type ->
-      a [ href url ] [ renderStyleType style_type text ]
+      a [ href url ] [ renderType style_type text ]
