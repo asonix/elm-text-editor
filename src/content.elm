@@ -19,7 +19,7 @@ module Content exposing
     selectNextParagraph, selectPreviousParagraph,
     hasNextParagraph, hasPreviousParagraph,
     updateCurrentParagraph, mergeWithPreviousParagraph,
-    insertParagraph, toList)
+    insertParagraph, toList, serializeToString)
 
 {-|
 @docs Content
@@ -29,7 +29,7 @@ module Content exposing
 @docs updateCurrentParagraph
 @docs mergeWithPreviousParagraph
 @docs insertParagraph
-@docs toList
+@docs toList, serializeToString
 -}
 
 
@@ -123,10 +123,19 @@ mergeWithPreviousParagraph content =
 {-| Insert a new paragraph after the current paragraph and select it
 -}
 insertParagraph : List Style -> Content -> Content
-insertParagraph = ZipList.insertAfter << Paragraph.fromList
+insertParagraph style_list content =
+  content
+    |> updateCurrentParagraph Paragraph.removeIfMaybe
+    |> ZipList.insertAfter (Paragraph.fromList style_list)
 
 
 {-| Make a List of Paragraphs from a Content
 -}
 toList : Content -> List Paragraph
 toList = ZipList.toList
+
+
+{-| Serialize the current Content to a string
+-}
+serializeToString : (Paragraph -> String) -> Content -> String
+serializeToString = ZipList.serializeToString

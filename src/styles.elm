@@ -18,7 +18,7 @@ module Styles exposing
     (Style, setLinkHref, setText, updateText, appendText, toggleCode,
     toggleImage, toggleText, toggleStrike, toggleUnderline, toggleItalic,
     toggleBold, toggleHeading, toggleLink, serializeToString, render,
-    isEmpty, getText, setMouseoverText, empty)
+    isEmpty, getText, setMouseoverText, empty, toMaybe)
 
 {-|
 @docs Style
@@ -27,7 +27,7 @@ module Styles exposing
 @docs toggleCode, toggleImage, toggleStrike, toggleUnderline
 @docs toggleItalic, toggleBold, toggleHeading, toggleLink
 @docs serializeToString, render, isEmpty, getText, setMouseoverText
-@docs toggleText, empty
+@docs toggleText, empty, toMaybe
 -}
 
 import Html exposing (..)
@@ -660,3 +660,14 @@ render (Style { link_wrapper, text }) =
 
     Link url style_type ->
       a [ href url ] [ renderType style_type text ]
+
+
+{-| Convert empty styles to Nothing, otherwise return Just Style
+-}
+toMaybe : Style -> Maybe Style
+toMaybe style =
+  if isEmpty style then
+    Nothing
+
+  else
+    Just style

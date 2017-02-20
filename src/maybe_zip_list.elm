@@ -19,7 +19,7 @@ module MaybeZipList exposing
     insertBefore, insertAfter, removeCurrentForward, removeCurrentBack,
     toList, fromList, current, setCurrent, empty, isEmpty,
     canShiftBack, canShiftForward, merge, next, previous,
-    deleteNext, deletePrevious)
+    deleteNext, deletePrevious, serializeToString)
 
 {-|
 @docs MaybeZipList
@@ -32,6 +32,7 @@ module MaybeZipList exposing
 @docs canShiftBack, canShiftForward
 @docs merge
 @docs next, previous, deleteNext, deletePrevious
+@docs serializeToString
 -}
 
 {-| MaybeZipLists are useful for ensuring a list can only ever
@@ -611,3 +612,31 @@ deletePrevious (MaybeZipList {current, next}) =
     , current = current
     , next = next
     }
+
+
+{-| Serialize the current item to String
+-}
+serializeToString : (a -> String) -> MaybeZipList a -> String
+serializeToString fn (MaybeZipList {previous, current, next}) =
+  let
+      string_previous : String
+      string_previous =
+        "previous: [" ++ (String.join ", " (List.map fn previous)) ++ "]"
+
+      string_current : String
+      string_current =
+        case current of
+          Just c ->
+            "current: (Just " ++ (fn c) ++ ")"
+
+          Nothing ->
+            "current: Nothing"
+
+      string_next : String
+      string_next =
+        "next: [" ++ (String.join ", " (List.map fn next)) ++ "]"
+  in
+      "MaybeZipList {"
+        ++ string_previous ++ ", "
+        ++ string_current ++ ", "
+        ++ string_next ++ "}"

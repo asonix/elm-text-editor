@@ -118,7 +118,7 @@ keydown model key_code =
       mods = model.mods
 
       toggle : (Style -> Style) -> Model
-      toggle = toggleModelStyle (Debug.log "Model before key" model)
+      toggle = toggleModelStyle model
   in
       case handleCode model.mods key_code of
         Just Delete ->
@@ -332,7 +332,7 @@ moveRight model =
   let
       cn = model.content_navigation
   in
-      if not (String.isEmpty cn.previous_text) then
+      if not (String.isEmpty cn.next_text) then
         { model | content_navigation = moveRightThroughText cn }
 
       else if Paragraph.hasNextStyle (Content.currentParagraph cn.content) then
@@ -579,7 +579,8 @@ toggleModelStyle model toggleStyle =
 
       new_current_style : Style
       new_current_style =
-        toggleStyle current_style
+        current_style
+          |> toggleStyle
 
       new_content : Content
       new_content =
@@ -588,7 +589,7 @@ toggleModelStyle model toggleStyle =
           |> Content.updateCurrentParagraph (Paragraph.selectNextStyle)
           |> Content.updateCurrentParagraph (Paragraph.insertAfter right_style)
           |> Content.updateCurrentParagraph (Paragraph.selectPreviousStyle)
-          |> Content.updateCurrentParagraph (Paragraph.setCurrentStyle current_style)
+          |> Content.updateCurrentParagraph (Paragraph.setCurrentStyle new_current_style)
 
       new_cn : ContentNavigation
       new_cn =
@@ -617,7 +618,8 @@ view model =
           |> List.map (\paragraph -> p [] (List.map (Styles.render) paragraph))
   in
       div []
-        [ div []
+        [ css "editor.css"
+        , div []
             [ input [ placeholder "hello world", onInput NewText, value model.input ] []
             , div [] serialized
             ]
@@ -625,26 +627,41 @@ view model =
         ]
 
 
+css : String -> Html Msg
+css path =
+  node "link" [ rel "Stylesheet", href path ] []
+
+
 showModel : Model -> Html Msg
 showModel model =
-  if debug then
-    div [ class "debug" ]
-      [ p []
-          [ text "ctrl: "
-          , text (if model.mods.ctrl then "True" else "False")
+  let
+      s_lists : List (Html Msg)
+      s_lists =
+        model.content_navigation.content
+          |> Content.toList
+          |> List.map (List.map Styles.serializeToString << Paragraph.toList)
+          |> List.map (List.map (Html.p [] << List.singleton << text))
+          |> List.map (Html.blockquote [])
+  in
+      if debug then
+        div [ class "debug" ]
+          [ p []
+              [ text "ctrl: "
+              , text (if model.mods.ctrl then "True" else "False")
+              ]
+          , p []
+              [ text "alt: "
+              , text (if model.mods.alt then "True" else "False")
+              ]
+          , p []
+              [ text "shift: "
+              , text (if model.mods.shift then "True" else "False")
+              ]
+          , p [] s_lists
           ]
-      , p []
-          [ text "alt: "
-          , text (if model.mods.alt then "True" else "False")
-          ]
-      , p []
-          [ text "shift: "
-          , text (if model.mods.shift then "True" else "False")
-          ]
-      ]
 
-  else
-    text ""
+      else
+        text ""
 
 
 -- SUBSCRIPTIONS

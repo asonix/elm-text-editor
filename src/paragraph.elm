@@ -19,10 +19,10 @@ module Paragraph exposing
     currentStyle, currentStyleWithDefault, setCurrentStyle,
     selectPreviousStyle, selectNextStyle,
     hasPreviousStyle, hasNextStyle,
-    updateCurrentStyle, merge,
+    updateCurrentStyle, merge, removeIfMaybe,
     removeCurrentStyle, nextStyles, previousStyles,
     clearNextStyles, clearPreviousStyles,
-    toList, fromList, insertBefore, insertAfter)
+    toList, fromList, insertBefore, insertAfter, serializeToString)
 
 {-|
 @docs Paragraph
@@ -31,10 +31,11 @@ module Paragraph exposing
 @docs selectPreviousStyle, selectNextStyle
 @docs hasPreviousStyle, hasNextStyle
 @docs updateParagraph
-@docs merge
+@docs merge, removeIfMaybe
 @docs nextStyles, previousStyles, clearNextStyles, clearPreviousStyles
 @docs toList, fromList
 @docs insertBefore, insertAfter
+@docs serializeToString
 -}
 
 
@@ -119,7 +120,7 @@ toStart = MaybeZipList.toStart
 {-| Shift currentStyle to End
 -}
 toEnd : Paragraph -> Paragraph
-toEnd = MaybeZipList.toStart
+toEnd = MaybeZipList.toEnd
 
 
 {-| get the current style
@@ -140,19 +141,55 @@ currentStyleWithDefault style paragraph =
 {-| set the current style
 -}
 setCurrentStyle : Style -> Paragraph -> Paragraph
-setCurrentStyle style = MaybeZipList.setCurrent (Just style)
+setCurrentStyle = MaybeZipList.setCurrent << Just
+
+
+{-| Get Current Style or Nothing if empty
+-}
+currentStyleToMaybe : Paragraph -> Maybe Style
+currentStyleToMaybe = Util.fromMaybe Styles.toMaybe << currentStyle
+
+
+{-| Remove current style if empty
+-}
+removeIfMaybe : Paragraph -> Paragraph
+removeIfMaybe paragraph =
+  let
+    tmp_paragraph : Paragraph
+    tmp_paragraph =
+      MaybeZipList.setCurrent (currentStyleToMaybe paragraph) paragraph
+  in
+    if hasPreviousStyle tmp_paragraph then
+      tmp_paragraph
+        |> selectPreviousStyle
+        |> selectNextStyle
+
+    else if hasNextStyle tmp_paragraph then
+      tmp_paragraph
+        |> selectNextStyle
+        |> selectPreviousStyle
+
+    else
+      tmp_paragraph
+
 
 
 {-| shift to previous style
 -}
 selectPreviousStyle : Paragraph -> Paragraph
-selectPreviousStyle = MaybeZipList.shiftBack
+selectPreviousStyle paragraph =
+  paragraph
+    |> MaybeZipList.setCurrent (currentStyleToMaybe paragraph)
+    |> MaybeZipList.shiftBack
 
 
 {-| shift to next style
 -}
 selectNextStyle : Paragraph -> Paragraph
-selectNextStyle = MaybeZipList.shiftForward
+selectNextStyle paragraph =
+  paragraph
+    |> MaybeZipList.setCurrent (currentStyleToMaybe paragraph)
+    |> MaybeZipList.shiftForward
 
 
 {-| checks if previous style exists
@@ -236,3 +273,9 @@ insertBefore = MaybeZipList.insertBefore
 -}
 insertAfter : Maybe Style -> Paragraph -> Paragraph
 insertAfter = MaybeZipList.insertAfter
+
+
+{-| Serialize the current Paragraph to a string
+-}
+serializeToString : (Style -> String) -> Paragraph -> String
+serializeToString = MaybeZipList.serializeToString

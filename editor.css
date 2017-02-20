@@ -1,0 +1,11 @@
+.debug {
+    padding-left: 2em;
+    border: 1px solid #eee;
+}
+
+.debug blockquote {
+    border: solid #eee 1px;
+    margin-left: 0;
+    padding-left: 1em;
+}
+

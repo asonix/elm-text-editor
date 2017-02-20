@@ -18,7 +18,8 @@ module ZipList exposing
     (ZipList, shiftBack, shiftForward, toStart, toEnd,
     insertBefore, insertAfter, removeCurrentForward, removeCurrentBack,
     toList, fromList, current, setCurrent, init,
-    canShiftBack, canShiftForward, merge)
+    canShiftBack, canShiftForward, merge,
+    serializeToString)
 
 {-|
 @docs ZipList
@@ -30,6 +31,7 @@ module ZipList exposing
 @docs init
 @docs canShiftBack, canShiftForward
 @docs merge
+@docs serializeToString
 -}
 
 
@@ -199,3 +201,23 @@ merge (ZipList {default_value, maybe_zip_list}) (ZipList two) =
     { maybe_zip_list = MaybeZipList.merge maybe_zip_list two.maybe_zip_list
     , default_value = default_value
     }
+
+
+{-| Serialize the current item to String
+-}
+serializeToString : (a -> String) -> ZipList a -> String
+serializeToString fn (ZipList {default_value, maybe_zip_list}) =
+  let
+      string_default_value : String
+      string_default_value =
+        "default_value: " ++ (fn default_value)
+
+      string_maybe_zip_list : String
+      string_maybe_zip_list =
+        "maybe_zip_list: ("
+          ++ (MaybeZipList.serializeToString fn maybe_zip_list)
+          ++ ")"
+  in
+      "ZipList {"
+        ++ string_default_value ++ ", "
+        ++ string_maybe_zip_list ++ "}"
