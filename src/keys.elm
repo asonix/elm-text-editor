@@ -1,5 +1,5 @@
 {-
-Copyright (C) 2016  Riley Trautman
+Copyright (C) 2017  Riley Trautman
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -15,12 +15,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
 module Keys exposing
-    (KeyCmd(..), Modifiers, handleCode)
+    (KeyCmd(..), Modifiers, handleCode, defaultModifiers)
 
 {-|
 @docs KeyCmd
 
-@docs handleCode
+@docs handleCode defaultModifiers
 -}
 
 -- Imports
@@ -57,6 +57,15 @@ type alias Modifiers =
   { ctrl: Bool
   , alt: Bool
   , shift: Bool
+  }
+
+
+{-| Initialize modifiers with sane defaults
+-}
+defaultModifiers =
+  { ctrl = False
+  , alt = False
+  , shift = False
   }
 
 
