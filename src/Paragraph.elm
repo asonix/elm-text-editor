@@ -218,7 +218,8 @@ updateCurrentStyle fn paragraph =
 {-| Merge paragraphs
 -}
 merge : Paragraph -> Paragraph -> Paragraph
-merge p1 p2 = MaybeZipList.merge (toEnd p1) p2
+merge p1 p2 =
+  MaybeZipList.merge (toEnd p1) (removeIfMaybe p2)
 
 
 {-| Remove the current style from the paragraph. Move previous style to current
