@@ -1,25 +1,47 @@
 {-
-Copyright (C) 2017  Riley Trautman
+   Copyright (C) 2017  Riley Trautman
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -}
-module MaybeZipList exposing
-    (MaybeZipList, shiftBack, shiftForward, toStart, toEnd,
-    insertBefore, insertAfter, removeCurrentForward, removeCurrentBack,
-    toList, fromList, current, setCurrent, empty, isEmpty,
-    canShiftBack, canShiftForward, merge, next, previous,
-    deleteNext, deletePrevious, serializeToString)
+
+
+module MaybeZipList
+    exposing
+        ( MaybeZipList
+        , shiftBack
+        , shiftForward
+        , toStart
+        , toEnd
+        , insertBefore
+        , insertAfter
+        , removeCurrentForward
+        , removeCurrentBack
+        , toList
+        , fromList
+        , current
+        , setCurrent
+        , empty
+        , isEmpty
+        , canShiftBack
+        , canShiftForward
+        , merge
+        , next
+        , previous
+        , deleteNext
+        , deletePrevious
+        , serializeToString
+        )
 
 {-|
 @docs MaybeZipList
@@ -35,18 +57,19 @@ module MaybeZipList exposing
 @docs serializeToString
 -}
 
+
 {-| MaybeZipLists are useful for ensuring a list can only ever
 have zero or one Nothing
 
 They also have a concept of a "current" element.
 The MaybeZipList's previous and next lists are treated as stacks.
 -}
-type MaybeZipList a =
-  MaybeZipList
-    { previous : List a
-    , current : Maybe a
-    , next : List a
-    }
+type MaybeZipList a
+    = MaybeZipList
+        { previous : List a
+        , current : Maybe a
+        , next : List a
+        }
 
 
 {-| shiftBack cycles through the MaybeZipList towards the beginning
@@ -73,37 +96,37 @@ examples:
 
 -}
 shiftBack : MaybeZipList a -> MaybeZipList a
-shiftBack (MaybeZipList {previous, current, next}) =
-  let
-      new_next =
-        case current of
-          Just c ->
-            c::next
+shiftBack (MaybeZipList { previous, current, next }) =
+    let
+        new_next =
+            case current of
+                Just c ->
+                    c :: next
 
-          Nothing ->
-            next
-  in
-      case previous of
-        [] ->
-          MaybeZipList
-            { previous = []
-            , current = current
-            , next = next
-            }
+                Nothing ->
+                    next
+    in
+        case previous of
+            [] ->
+                MaybeZipList
+                    { previous = []
+                    , current = current
+                    , next = next
+                    }
 
-        [last] ->
-          MaybeZipList
-            { previous = []
-            , current = Just last
-            , next = new_next
-            }
+            [ last ] ->
+                MaybeZipList
+                    { previous = []
+                    , current = Just last
+                    , next = new_next
+                    }
 
-        first::rest ->
-          MaybeZipList
-            { previous = rest
-            , current = Just first
-            , next = new_next
-            }
+            first :: rest ->
+                MaybeZipList
+                    { previous = rest
+                    , current = Just first
+                    , next = new_next
+                    }
 
 
 {-| shiftForward cycles through the MaybeZipList towards the end
@@ -130,37 +153,37 @@ examples:
 
 -}
 shiftForward : MaybeZipList a -> MaybeZipList a
-shiftForward (MaybeZipList {previous, current, next}) =
-  let
-      new_previous =
-        case current of
-          Just c ->
-            c::previous
+shiftForward (MaybeZipList { previous, current, next }) =
+    let
+        new_previous =
+            case current of
+                Just c ->
+                    c :: previous
 
-          Nothing ->
-            previous
-  in
-      case next of
-        [] ->
-          MaybeZipList
-            { previous = previous
-            , current = current
-            , next = []
-            }
+                Nothing ->
+                    previous
+    in
+        case next of
+            [] ->
+                MaybeZipList
+                    { previous = previous
+                    , current = current
+                    , next = []
+                    }
 
-        [first] ->
-          MaybeZipList
-            { previous = new_previous
-            , current = Just first
-            , next = []
-            }
+            [ first ] ->
+                MaybeZipList
+                    { previous = new_previous
+                    , current = Just first
+                    , next = []
+                    }
 
-        first::rest ->
-          MaybeZipList
-            { previous = new_previous
-            , current = Just first
-            , next = rest
-            }
+            first :: rest ->
+                MaybeZipList
+                    { previous = new_previous
+                    , current = Just first
+                    , next = rest
+                    }
 
 
 {-| toStart resets the MaybeZipList to the beginning
@@ -181,38 +204,39 @@ examples:
 
 -}
 toStart : MaybeZipList a -> MaybeZipList a
-toStart (MaybeZipList {previous, current, next}) =
-  let
-      new_next =
-        case current of
-          Just c ->
-            c::next
+toStart (MaybeZipList { previous, current, next }) =
+    let
+        new_next =
+            case current of
+                Just c ->
+                    c :: next
 
-          Nothing ->
-            next
-  in
-      case previous of
-        [] ->
-          MaybeZipList
-            { previous = previous
-            , current = current
-            , next = next
-            }
+                Nothing ->
+                    next
+    in
+        case previous of
+            [] ->
+                MaybeZipList
+                    { previous = previous
+                    , current = current
+                    , next = next
+                    }
 
-        [first] ->
-          MaybeZipList
-            { previous = []
-            , current = Just first
-            , next = new_next
-            }
+            [ first ] ->
+                MaybeZipList
+                    { previous = []
+                    , current = Just first
+                    , next = new_next
+                    }
 
-        first::rest ->
-          toStart
-            (MaybeZipList
-            { previous = rest
-            , current = Just first
-            , next = new_next
-            })
+            first :: rest ->
+                toStart
+                    (MaybeZipList
+                        { previous = rest
+                        , current = Just first
+                        , next = new_next
+                        }
+                    )
 
 
 {-| toEnd resets the MaybeZipList to the beginning
@@ -233,38 +257,39 @@ examples:
 
 -}
 toEnd : MaybeZipList a -> MaybeZipList a
-toEnd (MaybeZipList {previous, current, next}) =
-  let
-      new_previous =
-        case current of
-          Just c ->
-            c::previous
+toEnd (MaybeZipList { previous, current, next }) =
+    let
+        new_previous =
+            case current of
+                Just c ->
+                    c :: previous
 
-          Nothing ->
-            previous
-  in
-      case next of
-        [] ->
-          MaybeZipList
-            { previous = previous
-            , current = current
-            , next = next
-            }
+                Nothing ->
+                    previous
+    in
+        case next of
+            [] ->
+                MaybeZipList
+                    { previous = previous
+                    , current = current
+                    , next = next
+                    }
 
-        [first] ->
-          MaybeZipList
-            { previous = new_previous
-            , current = Just first
-            , next = []
-            }
+            [ first ] ->
+                MaybeZipList
+                    { previous = new_previous
+                    , current = Just first
+                    , next = []
+                    }
 
-        first::rest ->
-          toEnd
-            (MaybeZipList
-            { previous = new_previous
-            , current = Just first
-            , next = rest
-            })
+            first :: rest ->
+                toEnd
+                    (MaybeZipList
+                        { previous = new_previous
+                        , current = Just first
+                        , next = rest
+                        }
+                    )
 
 
 {-| insertBefore puts a new item in the MaybeZipList before the current item
@@ -285,21 +310,21 @@ examples:
 
 -}
 insertBefore : Maybe a -> MaybeZipList a -> MaybeZipList a
-insertBefore elem (MaybeZipList {previous, current, next}) =
-  let
-      new_next =
-        case current of
-          Just c ->
-            c::next
+insertBefore elem (MaybeZipList { previous, current, next }) =
+    let
+        new_next =
+            case current of
+                Just c ->
+                    c :: next
 
-          Nothing ->
-            next
-  in
-      MaybeZipList
-        { previous = previous
-        , current = elem
-        , next = new_next
-        }
+                Nothing ->
+                    next
+    in
+        MaybeZipList
+            { previous = previous
+            , current = elem
+            , next = new_next
+            }
 
 
 {-| insertAfter puts a new item in the MaybeZipList before the current item
@@ -320,21 +345,21 @@ examples:
 
 -}
 insertAfter : Maybe a -> MaybeZipList a -> MaybeZipList a
-insertAfter elem (MaybeZipList {previous, current, next}) =
-  let
-      new_previous =
-        case current of
-          Just c ->
-            c::previous
+insertAfter elem (MaybeZipList { previous, current, next }) =
+    let
+        new_previous =
+            case current of
+                Just c ->
+                    c :: previous
 
-          Nothing ->
-            previous
-  in
-      MaybeZipList
-        { previous = new_previous
-        , current = elem
-        , next = next
-        }
+                Nothing ->
+                    previous
+    in
+        MaybeZipList
+            { previous = new_previous
+            , current = elem
+            , next = next
+            }
 
 
 {-| removeCurrentForward shifts the top of the next stack into current
@@ -355,28 +380,28 @@ examples:
 
 -}
 removeCurrentForward : MaybeZipList a -> MaybeZipList a
-removeCurrentForward (MaybeZipList {previous, current, next}) =
-  case next of
-    [] ->
-      MaybeZipList
-        { previous = previous
-        , current = current
-        , next = next
-        }
+removeCurrentForward (MaybeZipList { previous, current, next }) =
+    case next of
+        [] ->
+            MaybeZipList
+                { previous = previous
+                , current = current
+                , next = next
+                }
 
-    [first] ->
-      MaybeZipList
-        { previous = previous
-        , current = Just first
-        , next = []
-        }
+        [ first ] ->
+            MaybeZipList
+                { previous = previous
+                , current = Just first
+                , next = []
+                }
 
-    first::rest ->
-      MaybeZipList
-        { previous = previous
-        , current = Just first
-        , next = rest
-        }
+        first :: rest ->
+            MaybeZipList
+                { previous = previous
+                , current = Just first
+                , next = rest
+                }
 
 
 {-| removeCurrentBack shifts the top of the previous stack into current
@@ -403,28 +428,28 @@ examples:
 
 -}
 removeCurrentBack : MaybeZipList a -> MaybeZipList a
-removeCurrentBack (MaybeZipList {previous, current, next}) =
-  case previous of
-    [] ->
-      MaybeZipList
-        { previous = previous
-        , current = current
-        , next = next
-        }
+removeCurrentBack (MaybeZipList { previous, current, next }) =
+    case previous of
+        [] ->
+            MaybeZipList
+                { previous = previous
+                , current = current
+                , next = next
+                }
 
-    [first] ->
-      MaybeZipList
-        { previous = []
-        , current = Just first
-        , next = next
-        }
+        [ first ] ->
+            MaybeZipList
+                { previous = []
+                , current = Just first
+                , next = next
+                }
 
-    first::rest ->
-      MaybeZipList
-        { previous = rest
-        , current = Just first
-        , next = next
-        }
+        first :: rest ->
+            MaybeZipList
+                { previous = rest
+                , current = Just first
+                , next = next
+                }
 
 
 {-| toList converts a MaybeZipList into a List
@@ -445,17 +470,17 @@ examples:
 
 -}
 toList : MaybeZipList a -> List a
-toList (MaybeZipList {previous, current, next}) =
-  let
-      new_next =
-        case current of
-          Just c ->
-            c::next
+toList (MaybeZipList { previous, current, next }) =
+    let
+        new_next =
+            case current of
+                Just c ->
+                    c :: next
 
-          Nothing ->
-            next
-  in
-      (List.reverse previous) ++ new_next
+                Nothing ->
+                    next
+    in
+        (List.reverse previous) ++ new_next
 
 
 {-| fromList converts a List into a MaybeZipList
@@ -471,27 +496,27 @@ examples:
 -}
 fromList : List a -> MaybeZipList a
 fromList list =
-  case list of
-    [] ->
-      MaybeZipList
-        { previous = []
-        , current = Nothing
-        , next = []
-        }
+    case list of
+        [] ->
+            MaybeZipList
+                { previous = []
+                , current = Nothing
+                , next = []
+                }
 
-    [first] ->
-      MaybeZipList
-        { previous = []
-        , current = Just first
-        , next = []
-        }
+        [ first ] ->
+            MaybeZipList
+                { previous = []
+                , current = Just first
+                , next = []
+                }
 
-    first::rest ->
-      MaybeZipList
-        { previous = []
-        , current = Just first
-        , next = rest
-        }
+        first :: rest ->
+            MaybeZipList
+                { previous = []
+                , current = Just first
+                , next = rest
+                }
 
 
 {-| Get the current element from the MaybeZipList
@@ -506,7 +531,8 @@ examples:
 
 -}
 current : MaybeZipList a -> Maybe a
-current (MaybeZipList {current}) = current
+current (MaybeZipList { current }) =
+    current
 
 
 {-| Sets the current value
@@ -518,23 +544,23 @@ examples:
 
 -}
 setCurrent : Maybe a -> MaybeZipList a -> MaybeZipList a
-setCurrent elem (MaybeZipList {previous, current, next}) =
-  MaybeZipList
-    { previous = previous
-    , current = elem
-    , next = next
-    }
+setCurrent elem (MaybeZipList { previous, current, next }) =
+    MaybeZipList
+        { previous = previous
+        , current = elem
+        , next = next
+        }
 
 
 {-| Create a new, empty MaybeZipList
 -}
 empty : MaybeZipList a
 empty =
-  MaybeZipList
-    { previous = []
-    , current = Nothing
-    , next = []
-    }
+    MaybeZipList
+        { previous = []
+        , current = Nothing
+        , next = []
+        }
 
 
 {-| Check if MaybeZipList is empty
@@ -549,22 +575,22 @@ examples:
 
 -}
 isEmpty : MaybeZipList a -> Bool
-isEmpty (MaybeZipList {previous, current, next}) =
-  List.isEmpty previous && List.isEmpty next && current == Nothing
+isEmpty (MaybeZipList { previous, current, next }) =
+    List.isEmpty previous && List.isEmpty next && current == Nothing
 
 
 {-| Returns true if current isn't at the beginning
 -}
 canShiftBack : MaybeZipList a -> Bool
-canShiftBack (MaybeZipList {previous}) =
-  not (List.isEmpty previous)
+canShiftBack (MaybeZipList { previous }) =
+    not (List.isEmpty previous)
 
 
 {-| Returns true if current isn't at the end
 -}
 canShiftForward : MaybeZipList a -> Bool
-canShiftForward (MaybeZipList {next}) =
-  not (List.isEmpty next)
+canShiftForward (MaybeZipList { next }) =
+    not (List.isEmpty next)
 
 
 {-| Merges the current MaybeZipList with another
@@ -572,71 +598,76 @@ canShiftForward (MaybeZipList {next}) =
 This merge preserves the current selection of the first MaybeZipList
 -}
 merge : MaybeZipList a -> MaybeZipList a -> MaybeZipList a
-merge (MaybeZipList {previous, current, next}) two =
-  MaybeZipList
-    { previous = previous
-    , current = current
-    , next = next ++ (toList two)
-    }
+merge (MaybeZipList { previous, current, next }) two =
+    MaybeZipList
+        { previous = previous
+        , current = current
+        , next = next ++ (toList two)
+        }
 
 
 {-| Get the next items after the current
 -}
 next : MaybeZipList a -> List a
-next (MaybeZipList {next}) = next
+next (MaybeZipList { next }) =
+    next
 
 
 {-| Get the previous items before the current
 -}
 previous : MaybeZipList a -> List a
-previous (MaybeZipList {previous}) = List.reverse previous
+previous (MaybeZipList { previous }) =
+    List.reverse previous
 
 
 {-| Remove the items after current
 -}
 deleteNext : MaybeZipList a -> MaybeZipList a
-deleteNext (MaybeZipList {previous, current}) =
-  MaybeZipList
-    { previous = previous
-    , current = current
-    , next = []
-    }
+deleteNext (MaybeZipList { previous, current }) =
+    MaybeZipList
+        { previous = previous
+        , current = current
+        , next = []
+        }
 
 
 {-| Remove the items before current
 -}
 deletePrevious : MaybeZipList a -> MaybeZipList a
-deletePrevious (MaybeZipList {current, next}) =
-  MaybeZipList
-    { previous = []
-    , current = current
-    , next = next
-    }
+deletePrevious (MaybeZipList { current, next }) =
+    MaybeZipList
+        { previous = []
+        , current = current
+        , next = next
+        }
 
 
 {-| Serialize the current item to String
 -}
 serializeToString : (a -> String) -> MaybeZipList a -> String
-serializeToString fn (MaybeZipList {previous, current, next}) =
-  let
-      string_previous : String
-      string_previous =
-        "previous: [" ++ (String.join ", " (List.map fn previous)) ++ "]"
+serializeToString fn (MaybeZipList { previous, current, next }) =
+    let
+        string_previous : String
+        string_previous =
+            "previous: [" ++ (String.join ", " (List.map fn previous)) ++ "]"
 
-      string_current : String
-      string_current =
-        case current of
-          Just c ->
-            "current: (Just " ++ (fn c) ++ ")"
+        string_current : String
+        string_current =
+            case current of
+                Just c ->
+                    "current: (Just " ++ (fn c) ++ ")"
 
-          Nothing ->
-            "current: Nothing"
+                Nothing ->
+                    "current: Nothing"
 
-      string_next : String
-      string_next =
-        "next: [" ++ (String.join ", " (List.map fn next)) ++ "]"
-  in
-      "MaybeZipList {"
-        ++ string_previous ++ ", "
-        ++ string_current ++ ", "
-        ++ string_next ++ "}"
+        string_next : String
+        string_next =
+            "next: [" ++ (String.join ", " (List.map fn next)) ++ "]"
+    in
+        "MaybeZipList {"
+            ++ string_previous
+            ++ ", "
+            ++ string_current
+            ++ ", "
+            ++ string_next
+            ++ "}"
