@@ -168,35 +168,30 @@ keydown model key_code =
 
 handleToggle : Toggle -> Model -> Model
 handleToggle toggle_type model =
-    let
-        toggle : (Style -> Style) -> Model
-        toggle =
-            flip (toggleModelStyle) model
-    in
-        case toggle_type of
-            ToggleCode ->
-                toggle toggleCode
+    case toggle_type of
+        ToggleCode ->
+            toggleModelStyle toggleCode model
 
-            ToggleImage ->
-                toggle toggleImage
+        ToggleImage ->
+            toggleModelStyle toggleImage model
 
-            ToggleLink ->
-                toggle (toggleLink "")
+        ToggleLink ->
+            toggleModelStyle (toggleLink "") model
 
-            ToggleHeading ->
-                toggle toggleHeading
+        ToggleHeading ->
+            toggleModelStyle toggleHeading model
 
-            ToggleBold ->
-                toggle toggleBold
+        ToggleBold ->
+            toggleModelStyle toggleBold model
 
-            ToggleItalic ->
-                toggle toggleItalic
+        ToggleItalic ->
+            toggleModelStyle toggleItalic model
 
-            ToggleUnderline ->
-                toggle toggleUnderline
+        ToggleUnderline ->
+            toggleModelStyle toggleUnderline model
 
-            ToggleStrike ->
-                toggle toggleStrike
+        ToggleStrike ->
+            toggleModelStyle toggleStrike model
 
 
 keyup : Model -> Int -> ( Model, Cmd Msg )
