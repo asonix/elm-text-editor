@@ -104,7 +104,11 @@ update msg model =
             keyup model code
 
         NewText text ->
-            ( inputToContent text model, Cmd.none )
+            ( { model
+                | navigation = Navigation.takeInput text model.navigation
+              }
+            , Cmd.none
+            )
 
 
 keydown : Model -> Int -> ( Model, Cmd Msg )
@@ -120,7 +124,9 @@ keydown model key_code =
     in
         case handleCode model.mods key_code of
             Just Delete ->
-                ( delete model, Cmd.none )
+                ( { model | navigation = Navigation.delete model.navigation }
+                , Cmd.none
+                )
 
             Just Ctrl ->
                 ( { model | mods = { mods | ctrl = True } }, Cmd.none )
@@ -132,14 +138,18 @@ keydown model key_code =
                 ( { model | mods = { mods | shift = True } }, Cmd.none )
 
             Just Left ->
-                ( moveLeft model, Cmd.none )
+                ( { model | navigation = Navigation.moveLeft model.navigation }
+                , Cmd.none
+                )
 
             Just Up ->
                 -- (moveUp model, Cmd.none)
                 ( model, Cmd.none )
 
             Just Right ->
-                ( moveRight model, Cmd.none )
+                ( { model | navigation = Navigation.moveRight model.navigation }
+                , Cmd.none
+                )
 
             Just Down ->
                 -- (moveDown model, Cmd.none)
@@ -149,7 +159,9 @@ keydown model key_code =
                 ( model, Cmd.none )
 
             Just NewParagraph ->
-                ( newParagraph model, Cmd.none )
+                ( { model | navigation = Navigation.newParagraph model.navigation }
+                , Cmd.none
+                )
 
             Just ToggleCode ->
                 ( toggle toggleCode, Cmd.none )
@@ -177,41 +189,6 @@ keydown model key_code =
 
             Nothing ->
                 ( model, Cmd.none )
-
-
-moveLeft : Model -> Model
-moveLeft model =
-    { model
-        | navigation = Navigation.moveLeft model.navigation
-    }
-
-
-moveRight : Model -> Model
-moveRight model =
-    { model
-        | navigation = Navigation.moveRight model.navigation
-    }
-
-
-inputToContent : String -> Model -> Model
-inputToContent input model =
-    { model
-        | navigation = Navigation.takeInput input model.navigation
-    }
-
-
-delete : Model -> Model
-delete model =
-    { model
-        | navigation = Navigation.delete model.navigation
-    }
-
-
-newParagraph : Model -> Model
-newParagraph model =
-    { model
-        | navigation = Navigation.newParagraph model.navigation
-    }
 
 
 keyup : Model -> Int -> ( Model, Cmd Msg )
