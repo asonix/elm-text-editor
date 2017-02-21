@@ -250,48 +250,13 @@ css path =
 
 showModel : Model -> Html Msg
 showModel model =
-    let
-        s_lists : List (Html Msg)
-        s_lists =
-            model.navigation.content
-                |> Content.toList
-                |> List.map (List.map Styles.serializeToString << Paragraph.toList)
-                |> List.map (List.map (Html.p [] << List.singleton << text))
-                |> List.map (Html.blockquote [])
-    in
-        if debug then
-            div [ class "debug" ]
-                [ p []
-                    [ text "ctrl: "
-                    , text
-                        (if model.mods.ctrl then
-                            "True"
-                         else
-                            "False"
-                        )
-                    ]
-                , p []
-                    [ text "alt: "
-                    , text
-                        (if model.mods.alt then
-                            "True"
-                         else
-                            "False"
-                        )
-                    ]
-                , p []
-                    [ text "shift: "
-                    , text
-                        (if model.mods.shift then
-                            "True"
-                         else
-                            "False"
-                        )
-                    ]
-                , p [] s_lists
-                ]
-        else
-            text ""
+    if debug then
+        div [ class "debug" ]
+            [ Keys.viewDebug model.mods
+            , Navigation.viewDebug model.navigation
+            ]
+    else
+        text ""
 
 
 

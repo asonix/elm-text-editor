@@ -16,15 +16,28 @@
 -}
 
 
-module Keys exposing (KeyCmd(..), Toggle(..), Modifiers, handleCode, defaultModifiers)
+module Keys
+    exposing
+        ( KeyCmd(..)
+        , Toggle(..)
+        , Modifiers
+        , handleCode
+        , defaultModifiers
+        , viewDebug
+        )
 
 {-|
 @docs KeyCmd, Toggle
 
 @docs handleCode, Modifiers, defaultModifiers
+@docs viewDebug
 -}
 
 -- Imports
+
+import Html exposing (..)
+
+
 -- Types
 
 
@@ -164,3 +177,39 @@ handleToggles modifiers key_code =
 
             _ ->
                 Nothing
+
+
+{-| render debug information
+-}
+viewDebug : Modifiers -> Html msg
+viewDebug mods =
+    Html.blockquote []
+        [ h3 [] [ text "Modifiers" ]
+        , p []
+            [ Html.text "ctrl: "
+            , Html.text
+                (if mods.ctrl then
+                    "True"
+                 else
+                    "False"
+                )
+            ]
+        , p []
+            [ Html.text "alt: "
+            , Html.text
+                (if mods.alt then
+                    "True"
+                 else
+                    "False"
+                )
+            ]
+        , p []
+            [ Html.text "shift: "
+            , Html.text
+                (if mods.shift then
+                    "True"
+                 else
+                    "False"
+                )
+            ]
+        ]

@@ -32,6 +32,7 @@ module Content
         , toList
         , serializeToString
         , view
+        , viewDebug
         )
 
 {-|
@@ -40,7 +41,7 @@ module Content
 @docs hasNextParagraph, hasPreviousParagraph
 @docs updateCurrentParagraph, mergeWithPreviousParagraph
 @docs insertParagraph, toList, serializeToString
-@docs view
+@docs view, viewDebug
 -}
 
 import Paragraph exposing (..)
@@ -172,3 +173,16 @@ view content =
         |> List.map
             (\paragraph -> p [] (List.map (Styles.render) paragraph))
         |> div []
+
+
+{-| Render debug information
+-}
+viewDebug : Content -> Html msg
+viewDebug content =
+    content
+        |> toList
+        |> List.map (List.map Styles.serializeToString << Paragraph.toList)
+        |> List.map (List.map (Html.p [] << List.singleton << text))
+        |> List.map (Html.blockquote [])
+        |> (::) (Html.h3 [] [ text "Content" ])
+        |> Html.blockquote []

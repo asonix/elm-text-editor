@@ -27,6 +27,7 @@ module Navigation
         , toggleStyle
         , view
         , takeInput
+        , viewDebug
         )
 
 {-|
@@ -39,6 +40,7 @@ module Navigation
 @docs toggleStyle
 @docs view
 @docs takeInput
+@docs viewDebug
 -}
 
 import Content exposing (..)
@@ -499,3 +501,24 @@ takeInput input navigation =
             , previous_text = new_previous_text
             , next_text = navigation.next_text
         }
+
+
+{-| view Debug info as HTML
+-}
+viewDebug : Navigation -> Html msg
+viewDebug navigation =
+    Html.blockquote []
+        [ Html.h3 [] [ text "Navigation" ]
+        , Html.blockquote []
+            [ Html.h3 [] [ text "Strings" ]
+            , Html.p []
+                [ Html.text "previous: "
+                , Html.text navigation.previous_text
+                ]
+            , Html.p []
+                [ Html.text "next: "
+                , Html.text navigation.next_text
+                ]
+            ]
+        , Content.viewDebug navigation.content
+        ]
