@@ -16,10 +16,10 @@
 -}
 
 
-module Keys exposing (KeyCmd(..), Modifiers, handleCode, defaultModifiers)
+module Keys exposing (KeyCmd(..), Toggle(..), Modifiers, handleCode, defaultModifiers)
 
 {-|
-@docs KeyCmd
+@docs KeyCmd, Toggle
 
 @docs handleCode, Modifiers, defaultModifiers
 -}
@@ -41,7 +41,13 @@ type KeyCmd
     | Down
     | NewLine
     | NewParagraph
-    | ToggleCode
+    | ToggleType Toggle
+
+
+{-| Toggle subcommands
+-}
+type Toggle
+    = ToggleCode
     | ToggleImage
     | ToggleLink
     | ToggleHeading
@@ -101,35 +107,35 @@ handleToggles modifiers key_code =
         case key_code of
             66 ->
                 -- B
-                Just ToggleBold
+                Just (ToggleType ToggleBold)
 
             67 ->
                 -- C
-                Just ToggleCode
+                Just (ToggleType ToggleCode)
 
             72 ->
                 -- H
-                Just ToggleHeading
+                Just (ToggleType ToggleHeading)
 
             73 ->
                 -- I
-                Just ToggleItalic
+                Just (ToggleType ToggleItalic)
 
             76 ->
                 -- L
-                Just ToggleLink
+                Just (ToggleType ToggleLink)
 
             80 ->
                 -- I
-                Just ToggleImage
+                Just (ToggleType ToggleImage)
 
             83 ->
                 -- S
-                Just ToggleStrike
+                Just (ToggleType ToggleStrike)
 
             85 ->
                 -- U
-                Just ToggleUnderline
+                Just (ToggleType ToggleUnderline)
 
             _ ->
                 Nothing

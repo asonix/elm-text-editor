@@ -117,10 +117,6 @@ keydown model key_code =
         mods : Modifiers
         mods =
             model.mods
-
-        toggle : (Style -> Style) -> Model
-        toggle =
-            flip (toggleModelStyle) model
     in
         case handleCode model.mods key_code of
             Just Delete ->
@@ -163,32 +159,44 @@ keydown model key_code =
                 , Cmd.none
                 )
 
-            Just ToggleCode ->
-                ( toggle toggleCode, Cmd.none )
-
-            Just ToggleImage ->
-                ( toggle toggleImage, Cmd.none )
-
-            Just ToggleLink ->
-                ( toggle (toggleLink ""), Cmd.none )
-
-            Just ToggleHeading ->
-                ( toggle toggleHeading, Cmd.none )
-
-            Just ToggleBold ->
-                ( toggle toggleBold, Cmd.none )
-
-            Just ToggleItalic ->
-                ( toggle toggleItalic, Cmd.none )
-
-            Just ToggleUnderline ->
-                ( toggle toggleUnderline, Cmd.none )
-
-            Just ToggleStrike ->
-                ( toggle toggleStrike, Cmd.none )
+            Just (ToggleType toggle) ->
+                ( handleToggle toggle model, Cmd.none )
 
             Nothing ->
                 ( model, Cmd.none )
+
+
+handleToggle : Toggle -> Model -> Model
+handleToggle toggle_type model =
+    let
+        toggle : (Style -> Style) -> Model
+        toggle =
+            flip (toggleModelStyle) model
+    in
+        case toggle_type of
+            ToggleCode ->
+                toggle toggleCode
+
+            ToggleImage ->
+                toggle toggleImage
+
+            ToggleLink ->
+                toggle (toggleLink "")
+
+            ToggleHeading ->
+                toggle toggleHeading
+
+            ToggleBold ->
+                toggle toggleBold
+
+            ToggleItalic ->
+                toggle toggleItalic
+
+            ToggleUnderline ->
+                toggle toggleUnderline
+
+            ToggleStrike ->
+                toggle toggleStrike
 
 
 keyup : Model -> Int -> ( Model, Cmd Msg )
@@ -199,9 +207,6 @@ keyup model key_code =
             model.mods
     in
         case handleCode model.mods key_code of
-            Just Delete ->
-                ( model, Cmd.none )
-
             Just Ctrl ->
                 ( { model | mods = { mods | ctrl = False } }, Cmd.none )
 
