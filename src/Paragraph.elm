@@ -27,10 +27,10 @@ module Paragraph exposing
 {-|
 @docs Paragraph
 @docs empty, isEmpty, last, lastWithDefault, toStart, toEnd
-@docs currentStyle, currentStyleWithDefault setCurrentStyle
+@docs currentStyle, currentStyleWithDefault, setCurrentStyle
+@docs updateCurrentStyle, removeCurrentStyle
 @docs selectPreviousStyle, selectNextStyle
 @docs hasPreviousStyle, hasNextStyle
-@docs updateParagraph
 @docs merge, removeIfMaybe
 @docs nextStyles, previousStyles, clearNextStyles, clearPreviousStyles
 @docs toList, fromList

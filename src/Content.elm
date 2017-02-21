@@ -22,14 +22,11 @@ module Content exposing
     insertParagraph, toList, serializeToString)
 
 {-|
-@docs Content
-@docs init, currentParagraph, setCurrentParagraph,
+@docs Content, init, currentParagraph, setCurrentParagraph
 @docs selectNextParagraph, selectPreviousParagraph
 @docs hasNextParagraph, hasPreviousParagraph
-@docs updateCurrentParagraph
-@docs mergeWithPreviousParagraph
-@docs insertParagraph
-@docs toList, serializeToString
+@docs updateCurrentParagraph, mergeWithPreviousParagraph
+@docs insertParagraph, toList, serializeToString
 -}
 
 

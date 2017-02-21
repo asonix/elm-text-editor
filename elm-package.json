@@ -8,7 +8,13 @@
     ],
     "exposed-modules": [
         "Main",
-        "Styles"
+        "Styles",
+        "Content",
+        "Paragraph",
+        "Keys",
+        "MaybeZipList",
+        "ZipList",
+        "Util"
     ],
     "dependencies": {
         "elm-lang/core": "5.0.0 <= v < 6.0.0",

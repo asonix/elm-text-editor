@@ -49,7 +49,7 @@ type MaybeZipList a =
     }
 
 
-{- shiftBack cycles through the MaybeZipList towards the beginning
+{-| shiftBack cycles through the MaybeZipList towards the beginning
 
 examples:
 
@@ -106,7 +106,7 @@ shiftBack (MaybeZipList {previous, current, next}) =
             }
 
 
-{- shiftForward cycles through the MaybeZipList towards the end
+{-| shiftForward cycles through the MaybeZipList towards the end
 
 examples:
 

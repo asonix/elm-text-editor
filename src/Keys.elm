@@ -20,7 +20,7 @@ module Keys exposing
 {-|
 @docs KeyCmd
 
-@docs handleCode defaultModifiers
+@docs handleCode, Modifiers, defaultModifiers
 -}
 
 -- Imports
@@ -62,6 +62,7 @@ type alias Modifiers =
 
 {-| Initialize modifiers with sane defaults
 -}
+defaultModifiers : Modifiers
 defaultModifiers =
   { ctrl = False
   , alt = False

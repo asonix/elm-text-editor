@@ -17,6 +17,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 module Util exposing
     (fromMaybe, fromMaybeWithDefault, fromTwoMaybes, fromTwoMaybesWithDefault)
 
+
+{-|
+@docs fromMaybe, fromMaybeWithDefault
+@docs fromTwoMaybes, fromTwoMaybesWithDefault
+-}
+
+
 {-| fromMaybe allows the chaining of uncertain operations
 
 examples:

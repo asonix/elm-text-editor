@@ -27,7 +27,7 @@ module ZipList exposing
 @docs insertBefore, insertAfter
 @docs removeCurrentForward, removeCurrentBack
 @docs toList, fromList
-@docs current, setcurrent
+@docs current, setCurrent
 @docs init
 @docs canShiftBack, canShiftForward
 @docs merge
@@ -49,7 +49,7 @@ type ZipList a =
     }
 
 
-{- shiftBack cycles through the ZipList towards the beginning
+{-| shiftBack cycles through the ZipList towards the beginning
 -}
 shiftBack : ZipList a -> ZipList a
 shiftBack (ZipList {default_value, maybe_zip_list}) =
@@ -59,7 +59,7 @@ shiftBack (ZipList {default_value, maybe_zip_list}) =
     }
 
 
-{- shiftForward cycles through the ZipList towards the end
+{-| shiftForward cycles through the ZipList towards the end
 -}
 shiftForward : ZipList a -> ZipList a
 shiftForward (ZipList {default_value, maybe_zip_list}) =
