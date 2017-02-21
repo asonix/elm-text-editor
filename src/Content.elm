@@ -31,6 +31,7 @@ module Content
         , insertParagraph
         , toList
         , serializeToString
+        , view
         )
 
 {-|
@@ -39,11 +40,13 @@ module Content
 @docs hasNextParagraph, hasPreviousParagraph
 @docs updateCurrentParagraph, mergeWithPreviousParagraph
 @docs insertParagraph, toList, serializeToString
+@docs view
 -}
 
 import Paragraph exposing (..)
 import ZipList exposing (..)
 import Styles exposing (Style)
+import Html exposing (..)
 
 
 {-| Content is an alias for List Paragraph
@@ -157,3 +160,15 @@ toList =
 serializeToString : (Paragraph -> String) -> Content -> String
 serializeToString =
     ZipList.serializeToString
+
+
+{-| Render the current Content to Html Msg
+-}
+view : Content -> Html msg
+view content =
+    content
+        |> toList
+        |> List.map Paragraph.toList
+        |> List.map
+            (\paragraph -> p [] (List.map (Styles.render) paragraph))
+        |> div []
