@@ -19,7 +19,9 @@
 module Keys
     exposing
         ( KeyCmd(..)
-        , Toggle(..)
+        , ToggleCmd(..)
+        , ArrowCmd(..)
+        , ModifierCmd(..)
         , Modifiers
         , handleCode
         , defaultModifiers
@@ -27,7 +29,7 @@ module Keys
         )
 
 {-|
-@docs KeyCmd, Toggle
+@docs KeyCmd, ToggleCmd, ArrowCmd, ModifierCmd
 
 @docs handleCode, Modifiers, defaultModifiers
 @docs viewDebug
@@ -45,21 +47,33 @@ import Html exposing (..)
 -}
 type KeyCmd
     = Delete
-    | Ctrl
-    | Alt
-    | Shift
-    | Left
-    | Up
-    | Right
-    | Down
     | NewLine
     | NewParagraph
-    | ToggleType Toggle
+    | ModifierType ModifierCmd
+    | ArrowType ArrowCmd
+    | ToggleType ToggleCmd
+
+
+{-| Modifier subcommands
+-}
+type ModifierCmd
+    = Ctrl
+    | Alt
+    | Shift
+
+
+{-| Arrow subcommands
+-}
+type ArrowCmd
+    = Left
+    | Up
+    | Down
+    | Right
 
 
 {-| Toggle subcommands
 -}
-type Toggle
+type ToggleCmd
     = ToggleCode
     | ToggleImage
     | ToggleLink
@@ -102,13 +116,13 @@ handleCode modifiers key_code =
             Just Delete
 
         16 ->
-            Just Shift
+            Just (ModifierType Shift)
 
         17 ->
-            Just Ctrl
+            Just (ModifierType Ctrl)
 
         18 ->
-            Just Alt
+            Just (ModifierType Alt)
 
         _ ->
             handleToggles modifiers key_code
@@ -164,16 +178,16 @@ handleToggles modifiers key_code =
                     )
 
             37 ->
-                Just Left
+                Just (ArrowType Left)
 
             38 ->
-                Just Up
+                Just (ArrowType Up)
 
             39 ->
-                Just Right
+                Just (ArrowType Right)
 
             40 ->
-                Just Down
+                Just (ArrowType Down)
 
             _ ->
                 Nothing

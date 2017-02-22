@@ -113,60 +113,68 @@ update msg model =
 
 keydown : Model -> Int -> ( Model, Cmd Msg )
 keydown model key_code =
+    case handleCode model.mods key_code of
+        Just Delete ->
+            ( { model | navigation = Navigation.delete model.navigation }
+            , Cmd.none
+            )
+
+        Just NewLine ->
+            ( model, Cmd.none )
+
+        Just NewParagraph ->
+            ( { model | navigation = Navigation.newParagraph model.navigation }
+            , Cmd.none
+            )
+
+        Just (ModifierType mod_type) ->
+            ( handleModifier mod_type model, Cmd.none )
+
+        Just (ArrowType arrow_type) ->
+            ( handleArrow arrow_type model, Cmd.none )
+
+        Just (ToggleType toggle) ->
+            ( handleToggle toggle model, Cmd.none )
+
+        Nothing ->
+            ( model, Cmd.none )
+
+
+handleModifier : ModifierCmd -> Model -> Model
+handleModifier mod_type model =
     let
         mods : Modifiers
         mods =
             model.mods
     in
-        case handleCode model.mods key_code of
-            Just Delete ->
-                ( { model | navigation = Navigation.delete model.navigation }
-                , Cmd.none
-                )
+        case mod_type of
+            Ctrl ->
+                { model | mods = { mods | ctrl = True } }
 
-            Just Ctrl ->
-                ( { model | mods = { mods | ctrl = True } }, Cmd.none )
+            Alt ->
+                { model | mods = { mods | alt = True } }
 
-            Just Alt ->
-                ( { model | mods = { mods | alt = True } }, Cmd.none )
-
-            Just Shift ->
-                ( { model | mods = { mods | shift = True } }, Cmd.none )
-
-            Just Left ->
-                ( { model | navigation = Navigation.moveLeft model.navigation }
-                , Cmd.none
-                )
-
-            Just Up ->
-                -- (moveUp model, Cmd.none)
-                ( model, Cmd.none )
-
-            Just Right ->
-                ( { model | navigation = Navigation.moveRight model.navigation }
-                , Cmd.none
-                )
-
-            Just Down ->
-                -- (moveDown model, Cmd.none)
-                ( model, Cmd.none )
-
-            Just NewLine ->
-                ( model, Cmd.none )
-
-            Just NewParagraph ->
-                ( { model | navigation = Navigation.newParagraph model.navigation }
-                , Cmd.none
-                )
-
-            Just (ToggleType toggle) ->
-                ( handleToggle toggle model, Cmd.none )
-
-            Nothing ->
-                ( model, Cmd.none )
+            Shift ->
+                { model | mods = { mods | shift = True } }
 
 
-handleToggle : Toggle -> Model -> Model
+handleArrow : ArrowCmd -> Model -> Model
+handleArrow arrow_type model =
+    case arrow_type of
+        Left ->
+            { model | navigation = Navigation.moveLeft model.navigation }
+
+        Up ->
+            model
+
+        Right ->
+            { model | navigation = Navigation.moveRight model.navigation }
+
+        Down ->
+            model
+
+
+handleToggle : ToggleCmd -> Model -> Model
 handleToggle toggle_type model =
     case toggle_type of
         ToggleCode ->
@@ -202,13 +210,13 @@ keyup model key_code =
             model.mods
     in
         case handleCode model.mods key_code of
-            Just Ctrl ->
+            Just (ModifierType Ctrl) ->
                 ( { model | mods = { mods | ctrl = False } }, Cmd.none )
 
-            Just Alt ->
+            Just (ModifierType Alt) ->
                 ( { model | mods = { mods | alt = False } }, Cmd.none )
 
-            Just Shift ->
+            Just (ModifierType Shift) ->
                 ( { model | mods = { mods | shift = False } }, Cmd.none )
 
             _ ->
