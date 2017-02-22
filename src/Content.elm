@@ -171,7 +171,7 @@ view content =
         |> toList
         |> List.map Paragraph.toList
         |> List.map
-            (\paragraph -> p [] (List.map (Styles.render) paragraph))
+            (Html.p [] << (List.map (Styles.render)))
         |> div []
 
 

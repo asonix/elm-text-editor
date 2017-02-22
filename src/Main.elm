@@ -25,6 +25,8 @@ module Main exposing (main)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Dom exposing (focus)
+import Task exposing (perform)
 import String exposing (..)
 import Styles exposing (..)
 import Paragraph exposing (..)
@@ -85,14 +87,20 @@ init =
 
 
 type Msg
+    = EditorMsg EditorType
+
+
+type EditorType
     = KeyDown Keyboard.KeyCode
     | KeyPress Keyboard.KeyCode
     | KeyUp Keyboard.KeyCode
     | NewText String
+    | Focus
+    | Nil
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update (EditorMsg msg) model =
     case msg of
         KeyDown code ->
             keydown model code
@@ -109,6 +117,14 @@ update msg model =
               }
             , Cmd.none
             )
+
+        Focus ->
+            ( model
+            , Task.attempt (always (EditorMsg Nil)) (Dom.focus "editor-input")
+            )
+
+        Nil ->
+            ( model, Debug.log "nil" Cmd.none )
 
 
 keydown : Model -> Int -> ( Model, Cmd Msg )
@@ -238,11 +254,15 @@ view : Model -> Html Msg
 view model =
     div []
         [ css "editor.css"
-        , div []
+        , div
+            [ class "editor"
+            , onClick (EditorMsg Focus)
+            ]
             [ input
                 [ placeholder "hello world"
-                , onInput NewText
+                , onInput (EditorMsg << NewText)
                 , value model.input
+                , id "editor-input"
                 ]
                 []
             , Navigation.view model.navigation
@@ -274,7 +294,7 @@ showModel model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Keyboard.downs KeyDown
-        , Keyboard.presses KeyPress
-        , Keyboard.ups KeyUp
+        [ Keyboard.downs (EditorMsg << KeyDown)
+        , Keyboard.presses (EditorMsg << KeyPress)
+        , Keyboard.ups (EditorMsg << KeyUp)
         ]
